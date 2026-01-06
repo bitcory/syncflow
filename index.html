@@ -9,22 +9,42 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #0f172a; /* Slate 900 */
-        color: #e2e8f0;
+        background-color: #FEF9E7;
+        color: #1a1a2e;
+      }
+      /* Memphis Pattern Background */
+      .memphis-bg {
+        background-color: #FEF9E7;
+        background-image:
+          radial-gradient(circle at 20% 80%, #FF6B6B 2px, transparent 2px),
+          radial-gradient(circle at 80% 20%, #4ECDC4 3px, transparent 3px),
+          radial-gradient(circle at 40% 40%, #FFE66D 2px, transparent 2px),
+          radial-gradient(circle at 60% 70%, #FF6B6B 1.5px, transparent 1.5px),
+          radial-gradient(circle at 90% 90%, #4ECDC4 2px, transparent 2px);
+        background-size: 100px 100px;
+      }
+      /* Memphis Card Style */
+      .memphis-card {
+        border: 3px solid #1a1a2e;
+        box-shadow: 6px 6px 0px #1a1a2e;
+      }
+      .memphis-card:hover {
+        box-shadow: 8px 8px 0px #1a1a2e;
+        transform: translate(-2px, -2px);
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
+        width: 10px;
       }
       ::-webkit-scrollbar-track {
-        background: #1e293b; 
+        background: #FEF9E7;
       }
       ::-webkit-scrollbar-thumb {
-        background: #475569; 
-        border-radius: 4px;
+        background: #FF6B6B;
+        border: 2px solid #1a1a2e;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; 
+        background: #4ECDC4;
       }
     </style>
   <script type="importmap">

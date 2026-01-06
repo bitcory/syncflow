@@ -23,15 +23,18 @@ const ToastItem: React.FC<{ notif: Notification; onRemove: () => void }> = ({ no
   }, [onRemove]);
 
   const bgColors = {
-    success: 'bg-emerald-500',
-    info: 'bg-blue-500',
-    error: 'bg-red-500'
+    success: 'bg-[#4ECDC4]',
+    info: 'bg-[#FFE66D]',
+    error: 'bg-[#FF6B6B]'
   };
 
   return (
-    <div className={`${bgColors[notif.type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-fade-in-down`}>
-      <span className="text-sm font-medium">{notif.message}</span>
-      <button onClick={onRemove} className="opacity-70 hover:opacity-100">×</button>
+    <div
+      className={`${bgColors[notif.type]} text-gray-900 px-4 py-3 flex items-center gap-3 border-2 border-gray-900 font-bold`}
+      style={{boxShadow: '3px 3px 0px #1a1a2e'}}
+    >
+      <span className="text-sm">{notif.message}</span>
+      <button onClick={onRemove} className="opacity-70 hover:opacity-100 text-lg font-black">×</button>
     </div>
   );
 };
