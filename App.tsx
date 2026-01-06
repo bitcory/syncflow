@@ -1268,8 +1268,7 @@ const App: React.FC = () => {
                     </span>
                   </div>
                 )}
-                {/* flex-col-reverse이므로 역순으로 렌더링 */}
-                {[...filteredItems].reverse().map(item => (
+                {filteredItems.map(item => (
                   <FeedItemCard
                     key={item.id}
                     item={item}
