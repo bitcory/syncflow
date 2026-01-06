@@ -105,13 +105,6 @@ const App: React.FC = () => {
     // 오래된 기기 정리
     cleanupStaleDevices();
 
-    // 기기 등록 (cleanup 함수 반환)
-    const cleanupDevice = registerDevice(deviceId, {
-      id: deviceId,
-      name: deviceName,
-      type: deviceType
-    });
-
     // 공유 아이템 구독
     const unsubscribeItems = onValue(sharedItemsRef, (snapshot) => {
       const data = snapshot.val();
@@ -161,9 +154,24 @@ const App: React.FC = () => {
     return () => {
       unsubscribeItems();
       unsubscribeDevices();
-      cleanupDevice();
     };
   }, []);
+
+  // 카카오 로그인 시 사용자 등록
+  useEffect(() => {
+    if (kakaoUser) {
+      const cleanupUser = registerDevice(String(kakaoUser.id), {
+        id: String(kakaoUser.id),
+        name: kakaoUser.nickname,
+        type: 'user',
+        profileImage: kakaoUser.profileImage
+      });
+
+      return () => {
+        cleanupUser();
+      };
+    }
+  }, [kakaoUser]);
 
   const addNotification = (message: string, type: 'success' | 'info' | 'error') => {
     const id = Date.now().toString() + Math.random();
@@ -354,39 +362,43 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Device List */}
+        {/* User List */}
         <div className="mb-6 flex-1">
           <div className="flex items-center justify-between mb-3">
             <label className="text-xs font-bold text-gray-700 uppercase">
-              연결된 기기 ({availableDevices.length})
+              접속 중인 사용자 ({availableDevices.length})
             </label>
           </div>
 
           <div className="space-y-2">
             {availableDevices.length > 0 ? (
-              availableDevices.map(dev => (
+              availableDevices.map(user => (
                 <div
-                  key={dev.id}
+                  key={user.id}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-all border-2 border-gray-900 ${
-                    dev.id === deviceId
+                    kakaoUser && String(kakaoUser.id) === user.id
                       ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
                       : 'bg-white hover:bg-gray-100'
                   }`}
-                  style={dev.id === deviceId ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
+                  style={kakaoUser && String(kakaoUser.id) === user.id ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
                 >
-                  {dev.type === 'mobile' && <Smartphone className="w-4 h-4" />}
-                  {dev.type === 'laptop' && <Laptop className="w-4 h-4" />}
-                  {dev.type === 'desktop' && <Monitor className="w-4 h-4" />}
+                  {user.profileImage ? (
+                    <img src={user.profileImage} alt={user.name} className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-[#FFE66D] border-2 border-gray-900 flex items-center justify-center">
+                      <span className="text-xs font-bold">{user.name.charAt(0)}</span>
+                    </div>
+                  )}
                   <div className="flex-1 text-left">
-                    <div className="font-bold">{dev.name}</div>
-                    {dev.id === deviceId && <div className="text-[10px] font-medium">현재 기기</div>}
+                    <div className="font-bold">{user.name}</div>
+                    {kakaoUser && String(kakaoUser.id) === user.id && <div className="text-[10px] font-medium">나</div>}
                   </div>
-                  <div className="w-3 h-3 bg-[#FF6B6B] border-2 border-gray-900 animate-pulse"></div>
+                  <div className="w-2 h-2 bg-[#4ECDC4] rounded-full border border-gray-900"></div>
                 </div>
               ))
             ) : (
                <div className="text-center py-6 text-gray-600 text-xs font-medium bg-white border-2 border-gray-900 border-dashed">
-                 연결된 기기가 없습니다
+                 접속 중인 사용자가 없습니다
                </div>
             )}
           </div>
@@ -413,42 +425,25 @@ const App: React.FC = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <span className="text-gray-900 text-sm hidden sm:inline font-medium">현재 기기:</span>
-            <span className="text-gray-900 font-bold text-sm flex items-center gap-2 bg-white px-3 py-1 border-2 border-gray-900">
-              {currentDevice.type === 'mobile' ? <Smartphone className="w-3 h-3" /> : (currentDevice.type === 'laptop' ? <Laptop className="w-3 h-3"/> : <Monitor className="w-3 h-3" />)}
-              <span className="hidden sm:inline">{currentDevice.name}</span>
-              <span className="sm:hidden">{currentDevice.name.split(' ')[0]}</span>
-            </span>
+            {kakaoUser && (
+              <span className="text-gray-900 font-bold text-sm flex items-center gap-2 bg-white px-3 py-1 border-2 border-gray-900">
+                {kakaoUser.profileImage ? (
+                  <img src={kakaoUser.profileImage} alt="" className="w-5 h-5 rounded-full" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">{kakaoUser.nickname}</span>
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            {kakaoUser ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-900 hidden sm:flex items-center gap-1 bg-[#FFE66D] px-3 py-1 border-2 border-gray-900">
-                  {kakaoUser.profileImage ? (
-                    <img src={kakaoUser.profileImage} alt="" className="w-5 h-5 rounded-full" />
-                  ) : (
-                    <User className="w-4 h-4" />
-                  )}
-                  {kakaoUser.nickname}
-                </span>
-                <button
-                  onClick={handleKakaoLogout}
-                  className="p-2 text-gray-900 hover:bg-[#4ECDC4] hover:text-white transition-colors border-2 border-gray-900 bg-white"
-                  title="로그아웃"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleKakaoLogin}
-                className="flex items-center gap-2 px-3 py-1.5 bg-[#FEE500] hover:bg-[#FADA0A] text-gray-900 font-bold text-sm border-2 border-gray-900 transition-colors"
-                title="카카오 로그인"
-              >
-                <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">로그인</span>
-              </button>
-            )}
+            <button
+              onClick={handleKakaoLogout}
+              className="p-2 text-gray-900 hover:bg-[#FF6B6B] hover:text-white transition-colors border-2 border-gray-900 bg-white"
+              title="로그아웃"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
             <button
               onClick={handleClearAll}
               className="p-2 text-gray-900 hover:bg-[#FF6B6B] hover:text-white transition-colors border-2 border-gray-900 bg-white"

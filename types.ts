@@ -20,7 +20,8 @@ export interface SharedItem {
 export interface DeviceProfile {
   id: string;
   name: string;
-  type: 'mobile' | 'desktop' | 'laptop';
+  type: 'mobile' | 'desktop' | 'laptop' | 'user';
+  profileImage?: string;
 }
 
 export interface Notification {
