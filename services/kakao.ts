@@ -15,24 +15,34 @@ export const initKakao = () => {
   }
 };
 
-// 카카오 로그인
+// 카카오 로그인 (최신 SDK 방식)
 export const kakaoLogin = (): Promise<KakaoUser | null> => {
   return new Promise((resolve, reject) => {
     if (!window.Kakao) {
+      console.error('Kakao SDK not loaded');
       reject(new Error('Kakao SDK not loaded'));
       return;
     }
 
+    if (!window.Kakao.isInitialized()) {
+      console.error('Kakao SDK not initialized');
+      initKakao();
+    }
+
+    // 최신 SDK 방식 사용
     window.Kakao.Auth.login({
-      success: () => {
+      scope: 'profile_nickname,profile_image',
+      success: (authObj: any) => {
+        console.log('Kakao auth success:', authObj);
         // 로그인 성공 후 사용자 정보 가져오기
         window.Kakao.API.request({
           url: '/v2/user/me',
           success: (res: any) => {
+            console.log('User info:', res);
             const user: KakaoUser = {
               id: res.id,
-              nickname: res.properties?.nickname || '사용자',
-              profileImage: res.properties?.profile_image || null,
+              nickname: res.kakao_account?.profile?.nickname || res.properties?.nickname || '사용자',
+              profileImage: res.kakao_account?.profile?.profile_image_url || res.properties?.profile_image || null,
             };
             // 로컬스토리지에 저장
             localStorage.setItem('kakao_user', JSON.stringify(user));
@@ -57,6 +67,7 @@ export const kakaoLogout = (): Promise<void> => {
   return new Promise((resolve) => {
     if (window.Kakao && window.Kakao.Auth.getAccessToken()) {
       window.Kakao.Auth.logout(() => {
+        console.log('Kakao logout success');
         localStorage.removeItem('kakao_user');
         resolve();
       });
