@@ -7,6 +7,7 @@ import {
   devicesRef,
   chatRoomsRef,
   adminsRef,
+  allRoomMembersRef,
   addSharedItem as firebaseAddItem,
   addMessageToRoom,
   createChatRoom,
@@ -125,6 +126,8 @@ const App: React.FC = () => {
   const [selectedUserForRoom, setSelectedUserForRoom] = useState<DeviceProfile | null>(null);
   const [isRoomSelectOpen, setIsRoomSelectOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [roomMembers, setRoomMembers] = useState<Record<string, Record<string, any>>>({});
+  const [userRoomIds, setUserRoomIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
@@ -290,11 +293,49 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  // 모든 채팅방 멤버십 구독
+  useEffect(() => {
+    const unsubscribe = onValue(allRoomMembersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setRoomMembers(data);
+      } else {
+        setRoomMembers({});
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 현재 사용자가 속한 방 ID 목록 계산
+  useEffect(() => {
+    if (!kakaoUser) {
+      setUserRoomIds([]);
+      return;
+    }
+
+    const userId = String(kakaoUser.id);
+    const roomIds: string[] = [];
+    Object.entries(roomMembers).forEach(([roomId, members]) => {
+      if (members && members[userId]) {
+        roomIds.push(roomId);
+      }
+    });
+    setUserRoomIds(roomIds);
+  }, [kakaoUser, roomMembers]);
+
   // 슈퍼관리자 여부 확인
   const isSuperAdmin = kakaoUser?.nickname === SUPER_ADMIN_NAME;
 
   // 관리자 여부 확인 (슈퍼관리자 포함)
   const isAdmin = isSuperAdmin || (kakaoUser && adminList.includes(String(kakaoUser.id)));
+
+  // 일반 사용자가 방이 배정되면 자동으로 첫 번째 방으로 이동
+  useEffect(() => {
+    if (!isAdmin && userRoomIds.length > 0 && currentRoomId === null) {
+      setCurrentRoomId(userRoomIds[0]);
+    }
+  }, [isAdmin, userRoomIds, currentRoomId]);
 
   // 채팅방별 메시지 구독
   useEffect(() => {
@@ -745,6 +786,82 @@ const App: React.FC = () => {
     );
   }
 
+  // 로그인은 됐지만 방이 배정되지 않은 사용자 (관리자 제외) - 대기 화면
+  if (!isAdmin && userRoomIds.length === 0) {
+    // 현재 대기 중인 사용자 목록 (방이 없는 사용자들)
+    const waitingUsers = availableDevices.filter(user => {
+      const userIsAdmin = user.name === SUPER_ADMIN_NAME || adminList.includes(user.id);
+      if (userIsAdmin) return false;
+
+      // 해당 사용자가 어떤 방에도 속하지 않은지 확인
+      const hasRoom = Object.values(roomMembers).some(members => members && members[user.id]);
+      return !hasRoom;
+    });
+
+    return (
+      <div className="min-h-screen memphis-bg flex items-center justify-center p-4">
+        <NotificationToast notifications={notifications} removeNotification={removeNotification} />
+        <div className="bg-white p-8 md:p-12 border-4 border-gray-900 shadow-[8px_8px_0px_#1a1a2e] max-w-md w-full text-center">
+          <img src="/logo.png" alt="TB CHAT" className="w-24 h-24 mx-auto mb-6 rounded-full border-4 border-gray-900" />
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">환영합니다, {kakaoUser.nickname}님!</h1>
+          <p className="text-gray-600 font-medium mb-6">관리자가 채팅방을 배정해 드릴 때까지 잠시 기다려주세요.</p>
+
+          <div className="bg-[#FFE66D] p-4 border-3 border-gray-900 mb-6" style={{border: '3px solid #1a1a2e'}}>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-3 h-3 bg-[#4ECDC4] rounded-full animate-pulse border border-gray-900"></div>
+              <span className="text-sm font-bold text-gray-900">대기 중</span>
+            </div>
+            <p className="text-xs text-gray-700">관리자가 곧 채팅방에 초대해 드립니다</p>
+          </div>
+
+          {/* 대기 중인 사용자 목록 */}
+          {waitingUsers.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-[#4ECDC4]" />
+                <span className="text-sm font-bold text-gray-900">함께 대기 중인 사용자</span>
+                <span className="px-2 py-0.5 bg-[#4ECDC4] text-xs font-bold border border-gray-900">{waitingUsers.length}</span>
+              </div>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {waitingUsers.map(user => {
+                  const isMe = String(kakaoUser.id) === user.id;
+                  return (
+                    <div
+                      key={user.id}
+                      className={`flex items-center gap-2 px-3 py-2 text-sm border-2 border-gray-900 ${
+                        isMe ? 'bg-[#4ECDC4]' : 'bg-white'
+                      }`}
+                    >
+                      {user.profileImage ? (
+                        <img src={user.profileImage} alt={user.name} className="w-6 h-6 rounded-full border border-gray-900" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-[#FFE66D] border border-gray-900 flex items-center justify-center">
+                          <span className="text-xs font-bold">{user.name.charAt(0)}</span>
+                        </div>
+                      )}
+                      <span className="font-medium">{user.name}</span>
+                      {isMe && <span className="text-xs text-gray-700">(나)</span>}
+                      <div className="ml-auto w-2 h-2 bg-[#4ECDC4] rounded-full border border-gray-900"></div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleKakaoLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-gray-100 text-gray-900 font-bold border-3 border-gray-900 transition-all"
+            style={{border: '3px solid #1a1a2e'}}
+          >
+            <LogOut className="w-4 h-4" />
+            로그아웃
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen memphis-bg text-gray-900 flex flex-col md:flex-row font-sans">
       <NotificationToast notifications={notifications} removeNotification={removeNotification} />
@@ -794,66 +911,92 @@ const App: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            {/* 전체 채팅 */}
-            <button
-              onClick={() => {
-                setCurrentRoomId(null);
-                setSelectedMessage(null);
-                setIsSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold transition-all border-2 border-gray-900 ${
-                !currentRoomId
-                  ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
-                  : 'bg-white hover:bg-gray-100'
-              }`}
-              style={!currentRoomId ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span>전체 채팅</span>
-            </button>
-
-            {/* 생성된 채팅방들 */}
-            {chatRooms.map(room => (
+            {/* 전체 채팅 - 관리자만 접근 가능 */}
+            {isAdmin && (
               <button
-                key={room.id}
                 onClick={() => {
-                  setCurrentRoomId(room.id);
+                  setCurrentRoomId(null);
                   setSelectedMessage(null);
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold transition-all border-2 border-gray-900 ${
-                  currentRoomId === room.id
+                  !currentRoomId
                     ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
                     : 'bg-white hover:bg-gray-100'
                 }`}
-                style={currentRoomId === room.id ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
+                style={!currentRoomId ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
               >
-                <Hash className="w-5 h-5" />
-                <span className="truncate">{room.name}</span>
+                <MessageCircle className="w-5 h-5" />
+                <span>전체 채팅</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-[#FFE66D] border border-gray-900 ml-auto">관리자</span>
               </button>
-            ))}
+            )}
+
+            {/* 생성된 채팅방들 - 관리자는 모든 방, 일반 사용자는 본인이 속한 방만 */}
+            {chatRooms
+              .filter(room => isAdmin || userRoomIds.includes(room.id))
+              .map(room => {
+                const isMember = userRoomIds.includes(room.id);
+                return (
+                  <button
+                    key={room.id}
+                    onClick={() => {
+                      setCurrentRoomId(room.id);
+                      setSelectedMessage(null);
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold transition-all border-2 border-gray-900 ${
+                      currentRoomId === room.id
+                        ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
+                        : 'bg-white hover:bg-gray-100'
+                    }`}
+                    style={currentRoomId === room.id ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
+                  >
+                    <Hash className="w-5 h-5" />
+                    <span className="truncate">{room.name}</span>
+                    {isAdmin && !isMember && (
+                      <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 border border-gray-900 ml-auto" title="미참여 방">관리</span>
+                    )}
+                  </button>
+                );
+              })}
           </div>
         </div>
 
         {/* User List - Compact with Dropdown */}
         <div className="mb-6" ref={userListRef}>
-          <button
-            onClick={() => setIsUserListOpen(!isUserListOpen)}
-            className="w-full bg-white p-3 border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] flex items-center justify-between hover:bg-gray-50 transition-colors"
-            style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e'}}
-          >
-            <div className="flex items-center gap-3">
-              <Users className="w-5 h-5 text-[#4ECDC4]" />
-              <span className="text-sm font-bold">접속 중인 사용자</span>
-              <span className="px-2 py-0.5 bg-[#4ECDC4] text-xs font-bold border-2 border-gray-900">{availableDevices.length}</span>
-            </div>
-            {isUserListOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-          </button>
+          {(() => {
+            // 현재 방에 따라 접속 사용자 필터링
+            const currentRoomMembers = currentRoomId ? roomMembers[currentRoomId] || {} : {};
+            const filteredUsers = currentRoomId
+              ? availableDevices.filter(user => {
+                  // 관리자는 항상 표시
+                  const userIsAdmin = user.name === SUPER_ADMIN_NAME || adminList.includes(user.id);
+                  if (userIsAdmin) return true;
+                  // 해당 방의 멤버만 표시
+                  return currentRoomMembers[user.id];
+                })
+              : availableDevices; // 전체 채팅은 모든 사용자 표시
+
+            return (
+              <>
+                <button
+                  onClick={() => setIsUserListOpen(!isUserListOpen)}
+                  className="w-full bg-white p-3 border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e'}}
+                >
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5 text-[#4ECDC4]" />
+                    <span className="text-sm font-bold">접속 중인 사용자</span>
+                    <span className="px-2 py-0.5 bg-[#4ECDC4] text-xs font-bold border-2 border-gray-900">{filteredUsers.length}</span>
+                  </div>
+                  {isUserListOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
 
           {isUserListOpen && (
             <div className="mt-2 space-y-2">
-              {availableDevices.length > 0 ? (
-                availableDevices.map(user => {
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map(user => {
                   const userIsSuperAdmin = user.name === SUPER_ADMIN_NAME;
                   const userIsAdmin = isUserAdmin(user.id);
                   const isMe = kakaoUser && String(kakaoUser.id) === user.id;
@@ -937,6 +1080,9 @@ const App: React.FC = () => {
               )}
             </div>
           )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Info */}

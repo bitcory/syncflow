@@ -189,6 +189,24 @@ export const getRoomMembers = async (roomId: string) => {
   return snapshot.val();
 };
 
+// 사용자가 속한 모든 채팅방 멤버십 레퍼런스
+export const allRoomMembersRef = ref(database, 'roomMembers');
+
+// 사용자가 속한 채팅방 ID 목록 가져오기
+export const getUserRoomIds = async (userId: string): Promise<string[]> => {
+  const snapshot = await get(allRoomMembersRef);
+  const data = snapshot.val();
+  if (!data) return [];
+
+  const roomIds: string[] = [];
+  Object.entries(data).forEach(([roomId, members]: [string, any]) => {
+    if (members && members[userId]) {
+      roomIds.push(roomId);
+    }
+  });
+  return roomIds;
+};
+
 // Firebase Storage에 파일 업로드
 export const uploadFileToStorage = async (
   file: File,
