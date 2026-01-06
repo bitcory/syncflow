@@ -271,7 +271,7 @@ const App: React.FC = () => {
             <div className={`flex items-center gap-1.5 ${isConnecting ? 'text-amber-400' : (isConnected ? 'text-emerald-400' : 'text-red-400')}`}>
               {isConnecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Cloud className="w-3 h-3" />}
               <span className="text-xs font-bold">
-                {isConnecting ? '연결 중...' : (isConnected ? 'Firebase 연결됨' : '연결 안됨')}
+                {isConnecting ? '연결 중...' : (isConnected ? '연결됨' : '연결 안됨')}
               </span>
             </div>
           </div>
