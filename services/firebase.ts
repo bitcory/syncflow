@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, push, onValue, serverTimestamp, onDisconnect, set, remove, get } from 'firebase/database';
+import { getDatabase, ref, push, onValue, serverTimestamp, onDisconnect, set, remove, get, update } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB9V_o6P_5jHhwm5Q8650FFVIZSU6C9F5U",
@@ -145,6 +145,46 @@ export const getRepliesRef = (itemId: string) => {
 export const deleteChatRoom = (roomId: string) => {
   const roomRef = ref(database, `chatRooms/${roomId}`);
   return remove(roomRef);
+};
+
+// 관리자 레퍼런스
+export const adminsRef = ref(database, 'admins');
+
+// 채팅방 멤버 레퍼런스
+export const getRoomMembersRef = (roomId: string) => {
+  return ref(database, `roomMembers/${roomId}`);
+};
+
+// 관리자 지정
+export const setAdmin = (userId: string, isAdmin: boolean) => {
+  const adminRef = ref(database, `admins/${userId}`);
+  if (isAdmin) {
+    return set(adminRef, { isAdmin: true, assignedAt: serverTimestamp() });
+  } else {
+    return remove(adminRef);
+  }
+};
+
+// 사용자를 채팅방에 추가
+export const addUserToRoom = (roomId: string, userId: string, userInfo: { name: string; profileImage?: string }) => {
+  const memberRef = ref(database, `roomMembers/${roomId}/${userId}`);
+  return set(memberRef, {
+    ...userInfo,
+    addedAt: serverTimestamp()
+  });
+};
+
+// 사용자를 채팅방에서 제거
+export const removeUserFromRoom = (roomId: string, userId: string) => {
+  const memberRef = ref(database, `roomMembers/${roomId}/${userId}`);
+  return remove(memberRef);
+};
+
+// 채팅방 멤버 목록 가져오기
+export const getRoomMembers = async (roomId: string) => {
+  const membersRef = getRoomMembersRef(roomId);
+  const snapshot = await get(membersRef);
+  return snapshot.val();
 };
 
 export { database, ref, onValue };
