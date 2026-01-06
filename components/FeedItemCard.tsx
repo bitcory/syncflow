@@ -6,11 +6,13 @@ interface Props {
   item: SharedItem;
   currentUserId?: number;
   currentUserName?: string;
+  onSelect?: () => void;
+  isSelected?: boolean;
 }
 
 const MAX_LENGTH = 200; // 최대 표시 글자 수
 
-export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUserName }) => {
+export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUserName, onSelect, isSelected }) => {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -80,7 +82,9 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
               {formatTime(item.timestamp)}
             </span>
 
-            <div className="bg-[#FFE66D] border-2 border-gray-900 rounded-2xl rounded-tr-none max-w-[280px] md:max-w-[400px] overflow-hidden"
+            <div
+                 onClick={onSelect}
+                 className={`bg-[#FFE66D] border-2 border-gray-900 rounded-2xl rounded-tr-none max-w-[280px] md:max-w-[400px] overflow-hidden cursor-pointer transition-all ${isSelected ? 'ring-2 ring-[#4ECDC4] ring-offset-2' : 'hover:shadow-[4px_4px_0px_#1a1a2e]'}`}
                  style={{boxShadow: '2px 2px 0px #1a1a2e'}}>
 
               {/* 텍스트 메시지 */}
@@ -181,7 +185,9 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
 
         {/* 메시지 버블 */}
         <div className="flex items-end gap-2">
-          <div className="bg-white border-2 border-gray-900 rounded-2xl rounded-tl-none max-w-[280px] md:max-w-[400px] overflow-hidden"
+          <div
+               onClick={onSelect}
+               className={`bg-white border-2 border-gray-900 rounded-2xl rounded-tl-none max-w-[280px] md:max-w-[400px] overflow-hidden cursor-pointer transition-all ${isSelected ? 'ring-2 ring-[#4ECDC4] ring-offset-2' : 'hover:shadow-[4px_4px_0px_#1a1a2e]'}`}
                style={{boxShadow: '2px 2px 0px #1a1a2e'}}>
 
             {/* 텍스트 메시지 */}

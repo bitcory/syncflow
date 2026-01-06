@@ -84,4 +84,10 @@ export const clearAllSharedItems = () => {
   return remove(sharedItemsRef);
 };
 
+// 특정 아이템 삭제
+export const deleteSharedItem = (itemId: string) => {
+  const itemRef = ref(database, `sharedItems/${itemId}`);
+  return remove(itemRef);
+};
+
 export { database, ref, onValue };

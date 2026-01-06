@@ -9,6 +9,7 @@ import {
   registerDevice,
   cleanupStaleDevices,
   clearAllSharedItems,
+  deleteSharedItem,
   onValue
 } from './services/firebase';
 import { initKakao, kakaoLogin, kakaoLogout, getStoredUser, KakaoUser } from './services/kakao';
@@ -33,7 +34,12 @@ import {
   User,
   ChevronDown,
   ChevronUp,
-  Users
+  Users,
+  Copy,
+  Trash2,
+  Download,
+  Clock,
+  Check
 } from 'lucide-react';
 
 // 기기 ID 생성 (브라우저별 고유)
@@ -90,6 +96,8 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoUser | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<SharedItem | null>(null);
+  const [copiedInPanel, setCopiedInPanel] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userListRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -139,6 +147,8 @@ const App: React.FC = () => {
             content: value.content,
             fileName: value.fileName,
             sender: value.sender,
+            senderImage: value.senderImage,
+            senderId: value.senderId,
             timestamp: value.timestamp || value.createdAt,
             isProcessing: false
           }))
@@ -203,6 +213,13 @@ const App: React.FC = () => {
     }
   }, [sharedItems]);
 
+  // 선택된 메시지가 삭제되면 패널 닫기
+  useEffect(() => {
+    if (selectedMessage && !sharedItems.find(item => item.id === selectedMessage.id)) {
+      setSelectedMessage(null);
+    }
+  }, [sharedItems, selectedMessage]);
+
   const addNotification = (message: string, type: 'success' | 'info' | 'error') => {
     const id = Date.now().toString() + Math.random();
     setNotifications(prev => [...prev, { id, message, type }]);
@@ -224,6 +241,63 @@ const App: React.FC = () => {
     } else if (password !== null) {
       addNotification('비밀번호가 틀렸습니다', 'error');
     }
+  };
+
+  // 패널에서 메시지 복사
+  const handlePanelCopy = async () => {
+    if (!selectedMessage) return;
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = selectedMessage.content;
+      const decodedText = textarea.value;
+      await navigator.clipboard.writeText(decodedText);
+      setCopiedInPanel(true);
+      setTimeout(() => setCopiedInPanel(false), 2000);
+    } catch (err) {
+      addNotification('복사 실패', 'error');
+    }
+  };
+
+  // 패널에서 메시지 삭제
+  const handlePanelDelete = async () => {
+    if (!selectedMessage) return;
+    const confirm = window.confirm('이 메시지를 삭제하시겠습니까?');
+    if (confirm) {
+      try {
+        await deleteSharedItem(selectedMessage.id);
+        setSelectedMessage(null);
+        addNotification('메시지가 삭제되었습니다', 'success');
+      } catch (err) {
+        addNotification('삭제 실패', 'error');
+      }
+    }
+  };
+
+  // 패널에서 미디어 다운로드
+  const handlePanelDownload = () => {
+    if (!selectedMessage) return;
+    const link = document.createElement('a');
+    link.href = selectedMessage.content;
+    if (selectedMessage.fileName) {
+      link.download = selectedMessage.fileName;
+    } else {
+      const ext = selectedMessage.type === ContentType.IMAGE ? 'png' : 'mp4';
+      link.download = `tbchat_${selectedMessage.id}.${ext}`;
+    }
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // 시간 포맷
+  const formatDateTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const handleKakaoLogin = async () => {
@@ -491,7 +565,14 @@ const App: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {sharedItems.map(item => (
-                <FeedItemCard key={item.id} item={item} currentUserId={kakaoUser?.id} currentUserName={kakaoUser?.nickname} />
+                <FeedItemCard
+                  key={item.id}
+                  item={item}
+                  currentUserId={kakaoUser?.id}
+                  currentUserName={kakaoUser?.nickname}
+                  onSelect={() => setSelectedMessage(item)}
+                  isSelected={selectedMessage?.id === item.id}
+                />
               ))}
             </div>
           )}
@@ -588,6 +669,84 @@ const App: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Right Panel - Message Detail */}
+      {selectedMessage && (
+        <aside className="hidden md:flex w-80 bg-white border-l-4 border-gray-900 flex-col h-screen shrink-0">
+          {/* Panel Header */}
+          <div className="p-4 border-b-3 border-gray-900 flex items-center justify-between bg-[#4ECDC4]" style={{borderBottom: '3px solid #1a1a2e'}}>
+            <h3 className="font-bold text-gray-900">메시지 상세</h3>
+            <button
+              onClick={() => setSelectedMessage(null)}
+              className="p-1.5 hover:bg-white/50 rounded transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Sender Info */}
+          <div className="p-4 border-b-2 border-gray-200">
+            <div className="flex items-center gap-3">
+              {selectedMessage.senderImage ? (
+                <img src={selectedMessage.senderImage} alt="" className="w-12 h-12 rounded-full border-2 border-gray-900" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-[#FFE66D] border-2 border-gray-900 flex items-center justify-center">
+                  <span className="text-lg font-bold">{selectedMessage.sender.charAt(0)}</span>
+                </div>
+              )}
+              <div>
+                <div className="font-bold text-gray-900">{selectedMessage.sender}</div>
+                <div className="text-xs text-gray-500 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {formatDateTime(selectedMessage.timestamp)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Preview */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">내용</label>
+            {selectedMessage.type === ContentType.TEXT ? (
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-3">
+                <p className="text-sm text-gray-900 whitespace-pre-wrap break-words">{selectedMessage.content}</p>
+              </div>
+            ) : selectedMessage.type === ContentType.IMAGE ? (
+              <img src={selectedMessage.content} alt="Preview" className="w-full rounded-lg border-2 border-gray-900" />
+            ) : (
+              <video src={selectedMessage.content} controls className="w-full rounded-lg border-2 border-gray-900" />
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="p-4 border-t-3 border-gray-900 space-y-2" style={{borderTop: '3px solid #1a1a2e'}}>
+            {selectedMessage.type === ContentType.TEXT ? (
+              <button
+                onClick={handlePanelCopy}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-all border-2 border-gray-900 ${copiedInPanel ? 'bg-[#4ECDC4]' : 'bg-white hover:bg-[#FFE66D]'}`}
+              >
+                {copiedInPanel ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiedInPanel ? '복사됨!' : '메시지 복사'}
+              </button>
+            ) : (
+              <button
+                onClick={handlePanelDownload}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-all border-2 border-gray-900 bg-white hover:bg-[#FFE66D]"
+              >
+                <Download className="w-4 h-4" />
+                다운로드
+              </button>
+            )}
+            <button
+              onClick={handlePanelDelete}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-all border-2 border-gray-900 bg-white hover:bg-[#FF6B6B] hover:text-white"
+            >
+              <Trash2 className="w-4 h-4" />
+              메시지 삭제
+            </button>
+          </div>
+        </aside>
+      )}
     </div>
   );
 };
