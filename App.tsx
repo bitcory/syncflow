@@ -91,7 +91,26 @@ const App: React.FC = () => {
   const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoUser | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const userListRef = useRef<HTMLDivElement>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
   const processedIds = useRef<Set<string>>(new Set());
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userListRef.current && !userListRef.current.contains(event.target as Node)) {
+        setIsUserListOpen(false);
+      }
+    };
+
+    if (isUserListOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserListOpen]);
 
   // 카카오 SDK 초기화
   useEffect(() => {
@@ -123,7 +142,7 @@ const App: React.FC = () => {
             timestamp: value.timestamp || value.createdAt,
             isProcessing: false
           }))
-          .sort((a, b) => b.timestamp - a.timestamp);
+          .sort((a, b) => a.timestamp - b.timestamp);
 
         setSharedItems(items);
 
@@ -176,6 +195,13 @@ const App: React.FC = () => {
       };
     }
   }, [kakaoUser]);
+
+  // 새 메시지 시 하단으로 스크롤
+  useEffect(() => {
+    if (feedRef.current) {
+      feedRef.current.scrollTop = feedRef.current.scrollHeight;
+    }
+  }, [sharedItems]);
 
   const addNotification = (message: string, type: 'success' | 'info' | 'error') => {
     const id = Date.now().toString() + Math.random();
@@ -350,7 +376,7 @@ const App: React.FC = () => {
         </div>
 
         {/* User List - Compact with Dropdown */}
-        <div className="mb-6">
+        <div className="mb-6" ref={userListRef}>
           <button
             onClick={() => setIsUserListOpen(!isUserListOpen)}
             className="w-full bg-white p-3 border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] flex items-center justify-between hover:bg-gray-50 transition-colors"
@@ -451,7 +477,7 @@ const App: React.FC = () => {
         </header>
 
         {/* Feed Area */}
-        <div className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 space-y-4">
+        <div ref={feedRef} className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 space-y-4">
           {sharedItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
               <div className="bg-white p-8 border-3 border-gray-900 shadow-[6px_6px_0px_#1a1a2e] text-center" style={{border: '3px solid #1a1a2e', boxShadow: '6px 6px 0px #1a1a2e'}}>
