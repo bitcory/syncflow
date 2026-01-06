@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SharedItem, ContentType } from '../types';
-import { FileText, Image as ImageIcon, Film, Monitor, Smartphone, Laptop, Download, Copy, Check } from 'lucide-react';
+import { Download, Copy, Check } from 'lucide-react';
 
 interface Props {
   item: SharedItem;
@@ -26,37 +26,6 @@ export const FeedItemCard: React.FC<Props> = ({ item }) => {
     }
   };
 
-  const getIcon = () => {
-    switch (item.type) {
-      case ContentType.TEXT: return <FileText className="w-5 h-5" />;
-      case ContentType.IMAGE: return <ImageIcon className="w-5 h-5" />;
-      case ContentType.VIDEO: return <Film className="w-5 h-5" />;
-    }
-  };
-
-  const getTypeColor = () => {
-    switch (item.type) {
-      case ContentType.TEXT: return 'bg-[#FFE66D]';
-      case ContentType.IMAGE: return 'bg-[#4ECDC4]';
-      case ContentType.VIDEO: return 'bg-[#FF6B6B]';
-    }
-  };
-
-  const getDeviceIcon = () => {
-    if (item.sender.toLowerCase().includes('mobile') || item.sender.toLowerCase().includes('phone') || item.sender.includes('아이폰') || item.sender.includes('폰') || item.sender.includes('스마트폰')) return <Smartphone className="w-3 h-3" />;
-    if (item.sender.toLowerCase().includes('laptop') || item.sender.toLowerCase().includes('macbook') || item.sender.includes('맥북') || item.sender.includes('노트북')) return <Laptop className="w-3 h-3" />;
-    return <Monitor className="w-3 h-3" />;
-  };
-
-  const getTypeLabel = (type: ContentType) => {
-    switch (type) {
-        case ContentType.TEXT: return '텍스트';
-        case ContentType.IMAGE: return '이미지';
-        case ContentType.VIDEO: return '동영상';
-        default: return type;
-    }
-  }
-
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = item.content;
@@ -71,88 +40,96 @@ export const FeedItemCard: React.FC<Props> = ({ item }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }
+  };
+
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   return (
-    <div
-      className="bg-white border-3 border-gray-900 overflow-hidden transition-all hover:-translate-y-1"
-      style={{border: '3px solid #1a1a2e', boxShadow: '5px 5px 0px #1a1a2e'}}
-    >
-      <div className={`p-4 border-b-3 border-gray-900 flex justify-between items-start ${getTypeColor()}`} style={{borderBottom: '3px solid #1a1a2e'}}>
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white border-2 border-gray-900">
-            {getIcon()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2 text-xs text-gray-900 uppercase tracking-wide font-bold">
-              {getTypeLabel(item.type)}
-              <span className="w-1.5 h-1.5 bg-gray-900 rounded-full"></span>
-              <span className="flex items-center gap-1">
-                {getDeviceIcon()}
-                {item.sender}
-              </span>
-            </div>
-            <div className="text-gray-700 text-[10px] mt-0.5 font-medium">
-              {new Date(item.timestamp).toLocaleTimeString('ko-KR')}
-            </div>
-          </div>
-        </div>
+    <div className="flex items-start gap-3">
+      {/* 프로필 아바타 */}
+      <div className="w-10 h-10 rounded-full bg-[#FFE66D] border-2 border-gray-900 flex items-center justify-center flex-shrink-0">
+        <span className="text-sm font-bold text-gray-900">
+          {item.sender.charAt(0).toUpperCase()}
+        </span>
       </div>
 
-      <div className="p-4">
-        {item.type === ContentType.TEXT && (
-          <div className="relative group">
-            <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed font-medium pr-10">{item.content}</p>
-            <button
-              onClick={handleCopy}
-              className={`absolute top-0 right-0 p-2 ${copied ? 'bg-[#4ECDC4]' : 'bg-[#FFE66D] hover:bg-[#4ECDC4]'} text-gray-900 border-2 border-gray-900 transition-all`}
-              title={copied ? '복사됨!' : '복사'}
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            </button>
-          </div>
-        )}
+      <div className="flex-1 min-w-0">
+        {/* 발신자 이름 */}
+        <div className="text-xs font-bold text-gray-700 mb-1">
+          {item.sender}
+        </div>
 
-        {item.type === ContentType.IMAGE && (
-          <div className="relative group">
-            <div className="border-2 border-gray-900 overflow-hidden bg-gray-100">
-              <img src={item.content} alt="Shared" className="w-full h-auto max-h-64 object-contain" />
-            </div>
-            <button
-              onClick={handleDownload}
-              className="absolute top-2 right-2 p-2 bg-[#FFE66D] hover:bg-[#4ECDC4] text-gray-900 border-2 border-gray-900 opacity-0 group-hover:opacity-100 transition-all"
-              title="다운로드"
-            >
-              <Download className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        {/* 메시지 버블 */}
+        <div className="flex items-end gap-2">
+          <div className="bg-white border-2 border-gray-900 rounded-2xl rounded-tl-none max-w-[85%] overflow-hidden"
+               style={{boxShadow: '2px 2px 0px #1a1a2e'}}>
 
-        {item.type === ContentType.VIDEO && (
-          <div className="relative group">
-            <div className="border-2 border-gray-900 overflow-hidden bg-gray-100">
-              <video
-                src={item.content}
-                controls
-                className="w-full h-auto max-h-64"
-                playsInline
-              >
-                동영상을 재생할 수 없습니다.
-              </video>
-            </div>
-            <div className="flex items-center justify-between mt-2 px-1">
-              <p className="text-xs text-gray-700 font-medium">{item.fileName || '동영상 파일'}</p>
-              <button
-                onClick={handleDownload}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4ECDC4] hover:bg-[#FFE66D] text-gray-900 text-xs font-bold border-2 border-gray-900 transition-colors"
-              >
-                <Download className="w-3 h-3" />
-                다운로드
-              </button>
-            </div>
-          </div>
-        )}
+            {/* 텍스트 메시지 */}
+            {item.type === ContentType.TEXT && (
+              <div className="p-3 relative group">
+                <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed">
+                  {item.content}
+                </p>
+                <button
+                  onClick={handleCopy}
+                  className={`absolute top-2 right-2 p-1.5 rounded-full ${copied ? 'bg-[#4ECDC4]' : 'bg-gray-100 hover:bg-[#FFE66D]'} text-gray-900 opacity-0 group-hover:opacity-100 transition-all`}
+                  title={copied ? '복사됨!' : '복사'}
+                >
+                  {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
+            )}
 
+            {/* 이미지 메시지 */}
+            {item.type === ContentType.IMAGE && (
+              <div className="relative group">
+                <img
+                  src={item.content}
+                  alt="Shared"
+                  className="max-w-full h-auto max-h-72 object-contain"
+                />
+                <button
+                  onClick={handleDownload}
+                  className="absolute bottom-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                  title="다운로드"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* 동영상 메시지 */}
+            {item.type === ContentType.VIDEO && (
+              <div className="relative group">
+                <video
+                  src={item.content}
+                  controls
+                  className="max-w-full h-auto max-h-72"
+                  playsInline
+                >
+                  동영상을 재생할 수 없습니다.
+                </video>
+                <button
+                  onClick={handleDownload}
+                  className="absolute bottom-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                  title="다운로드"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 시간 */}
+          <span className="text-[10px] text-gray-500 flex-shrink-0">
+            {formatTime(item.timestamp)}
+          </span>
+        </div>
       </div>
     </div>
   );
