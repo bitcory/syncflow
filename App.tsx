@@ -274,6 +274,35 @@ const App: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // 로그인 안 된 경우 인트로 화면 표시
+  if (!kakaoUser) {
+    return (
+      <div className="min-h-screen memphis-bg flex items-center justify-center p-4">
+        <NotificationToast notifications={notifications} removeNotification={removeNotification} />
+        <div className="bg-white p-8 md:p-12 border-4 border-gray-900 shadow-[8px_8px_0px_#1a1a2e] max-w-md w-full text-center">
+          <img src="/logo.png" alt="TB CHAT" className="w-24 h-24 mx-auto mb-6 rounded-full border-4 border-gray-900" />
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">TB CHAT</h1>
+          <p className="text-gray-600 font-medium mb-8">실시간 텍스트, 이미지, 동영상 공유</p>
+
+          <button
+            onClick={handleKakaoLogin}
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-[#FEE500] hover:bg-[#FADA0A] text-gray-900 font-bold text-lg border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] hover:shadow-[6px_6px_0px_#1a1a2e] hover:-translate-y-0.5 transition-all"
+            style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e'}}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3C6.48 3 2 6.48 2 10.5C2 13.08 3.72 15.33 6.36 16.59L5.38 20.31C5.31 20.56 5.6 20.76 5.82 20.62L10.15 17.82C10.75 17.9 11.37 17.95 12 17.95C17.52 17.95 22 14.47 22 10.45C22 6.48 17.52 3 12 3Z" fill="#3C1E1E"/>
+            </svg>
+            카카오로 시작하기
+          </button>
+
+          <p className="text-xs text-gray-500 mt-6">
+            로그인하면 서비스 이용약관에 동의하게 됩니다
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen memphis-bg text-gray-900 flex flex-col md:flex-row font-sans">
       <NotificationToast notifications={notifications} removeNotification={removeNotification} />
