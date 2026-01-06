@@ -32,7 +32,10 @@ import {
   ChevronDown,
   ChevronUp,
   Users,
-  Search
+  Search,
+  Copy,
+  Download,
+  Check
 } from 'lucide-react';
 
 // 기기 ID 생성 (브라우저별 고유)
@@ -93,6 +96,7 @@ const App: React.FC = () => {
   const [replies, setReplies] = useState<any[]>([]);
   const [replyInput, setReplyInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const userListRef = useRef<HTMLDivElement>(null);
@@ -302,6 +306,37 @@ const App: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // 메시지 복사 (스레드에서)
+  const handleCopyMessage = async () => {
+    if (!selectedMessage || selectedMessage.type !== ContentType.TEXT) return;
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = selectedMessage.content;
+      const decodedText = textarea.value;
+      await navigator.clipboard.writeText(decodedText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      addNotification('복사 실패', 'error');
+    }
+  };
+
+  // 미디어 다운로드 (스레드에서)
+  const handleDownloadMedia = () => {
+    if (!selectedMessage) return;
+    const link = document.createElement('a');
+    link.href = selectedMessage.content;
+    if (selectedMessage.fileName) {
+      link.download = selectedMessage.fileName;
+    } else {
+      const ext = selectedMessage.type === ContentType.IMAGE ? 'png' : 'mp4';
+      link.download = `tbchat_${selectedMessage.id}.${ext}`;
+    }
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleKakaoLogin = async () => {
@@ -775,10 +810,39 @@ const App: React.FC = () => {
                   {selectedMessage.type === ContentType.TEXT ? (
                     <p className="text-sm text-gray-900 mt-1 whitespace-pre-wrap break-words">{selectedMessage.content}</p>
                   ) : selectedMessage.type === ContentType.IMAGE ? (
-                    <img src={selectedMessage.content} alt="Shared" className="mt-2 max-w-full max-h-48 rounded-lg border-2 border-gray-900" />
+                    <img
+                      src={selectedMessage.content}
+                      alt="Shared"
+                      className="mt-2 max-w-full max-h-64 rounded-lg border-2 border-gray-900 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={handleDownloadMedia}
+                    />
                   ) : (
-                    <video src={selectedMessage.content} controls className="mt-2 max-w-full max-h-48 rounded-lg border-2 border-gray-900" />
+                    <video
+                      src={selectedMessage.content}
+                      controls
+                      className="mt-2 max-w-full max-h-64 rounded-lg border-2 border-gray-900"
+                    />
                   )}
+                  {/* Action Buttons */}
+                  <div className="mt-3 flex gap-2">
+                    {selectedMessage.type === ContentType.TEXT ? (
+                      <button
+                        onClick={handleCopyMessage}
+                        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold border-2 border-gray-900 rounded transition-all ${copied ? 'bg-[#4ECDC4]' : 'bg-white hover:bg-[#FFE66D]'}`}
+                      >
+                        {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        {copied ? '복사됨!' : '복사'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleDownloadMedia}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold border-2 border-gray-900 rounded bg-white hover:bg-[#FFE66D] transition-all"
+                      >
+                        <Download className="w-3 h-3" />
+                        다운로드
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

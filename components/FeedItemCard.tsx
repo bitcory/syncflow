@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SharedItem, ContentType } from '../types';
-import { Download, Copy, Check, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 interface Props {
   item: SharedItem;
@@ -13,7 +13,6 @@ interface Props {
 const MAX_LENGTH = 200; // 최대 표시 글자 수
 
 export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUserName, onSelect, isSelected }) => {
-  const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   // 내 메시지인지 확인 (senderId 비교 또는 이름 비교)
@@ -30,44 +29,16 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
     ? item.content.slice(0, MAX_LENGTH) + '...'
     : item.content;
 
-  const decodeHtmlEntities = (text: string) => {
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-  };
-
-  const handleCopy = async () => {
-    try {
-      const decodedText = decodeHtmlEntities(item.content);
-      await navigator.clipboard.writeText(decodedText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('복사 실패:', err);
-    }
-  };
-
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = item.content;
-
-    if (item.fileName) {
-      link.download = item.fileName;
-    } else {
-      const ext = item.type === ContentType.IMAGE ? 'png' : 'mp4';
-      link.download = `tbchat_${item.id}.${ext}`;
-    }
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString('ko-KR', {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded(true);
   };
 
   // 내 메시지 (오른쪽 정렬)
@@ -89,68 +60,40 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
 
               {/* 텍스트 메시지 */}
               {item.type === ContentType.TEXT && (
-                <div className="p-3 relative group">
-                  <p
-                    className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed cursor-pointer"
-                    onClick={() => isLongText && setExpanded(!expanded)}
-                  >
+                <div className="p-3">
+                  <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed">
                     {displayText}
                   </p>
                   {isLongText && !expanded && (
                     <button
-                      onClick={() => setExpanded(true)}
+                      onClick={handleExpand}
                       className="flex items-center justify-center w-full mt-2 text-gray-700 hover:text-gray-900"
                     >
                       <ChevronDown className="w-4 h-4" />
                     </button>
                   )}
-                  <button
-                    onClick={handleCopy}
-                    className={`absolute top-2 right-2 p-1.5 rounded-full ${copied ? 'bg-[#4ECDC4]' : 'bg-white/50 hover:bg-white'} text-gray-900 opacity-0 group-hover:opacity-100 transition-all`}
-                    title={copied ? '복사됨!' : '복사'}
-                  >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  </button>
                 </div>
               )}
 
               {/* 이미지 메시지 */}
               {item.type === ContentType.IMAGE && (
-                <div className="relative group">
-                  <img
-                    src={item.content}
-                    alt="Shared"
-                    className="max-w-full h-auto max-h-72 object-contain"
-                  />
-                  <button
-                    onClick={handleDownload}
-                    className="absolute bottom-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                    title="다운로드"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                </div>
+                <img
+                  src={item.content}
+                  alt="Shared"
+                  className="max-w-full h-auto max-h-72 object-contain"
+                />
               )}
 
               {/* 동영상 메시지 */}
               {item.type === ContentType.VIDEO && (
-                <div className="relative group">
-                  <video
-                    src={item.content}
-                    controls
-                    className="max-w-full h-auto max-h-72"
-                    playsInline
-                  >
-                    동영상을 재생할 수 없습니다.
-                  </video>
-                  <button
-                    onClick={handleDownload}
-                    className="absolute bottom-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                    title="다운로드"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                </div>
+                <video
+                  src={item.content}
+                  className="max-w-full h-auto max-h-72"
+                  playsInline
+                  muted
+                >
+                  동영상을 재생할 수 없습니다.
+                </video>
               )}
             </div>
           </div>
@@ -192,68 +135,40 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
 
             {/* 텍스트 메시지 */}
             {item.type === ContentType.TEXT && (
-              <div className="p-3 relative group">
-                <p
-                  className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed cursor-pointer"
-                  onClick={() => isLongText && setExpanded(!expanded)}
-                >
+              <div className="p-3">
+                <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed">
                   {displayText}
                 </p>
                 {isLongText && !expanded && (
                   <button
-                    onClick={() => setExpanded(true)}
+                    onClick={handleExpand}
                     className="flex items-center justify-center w-full mt-2 text-gray-700 hover:text-gray-900"
                   >
                     <ChevronDown className="w-4 h-4" />
                   </button>
                 )}
-                <button
-                  onClick={handleCopy}
-                  className={`absolute top-2 right-2 p-1.5 rounded-full ${copied ? 'bg-[#4ECDC4]' : 'bg-gray-100 hover:bg-[#FFE66D]'} text-gray-900 opacity-0 group-hover:opacity-100 transition-all`}
-                  title={copied ? '복사됨!' : '복사'}
-                >
-                  {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                </button>
               </div>
             )}
 
             {/* 이미지 메시지 */}
             {item.type === ContentType.IMAGE && (
-              <div className="relative group">
-                <img
-                  src={item.content}
-                  alt="Shared"
-                  className="max-w-full h-auto max-h-72 object-contain"
-                />
-                <button
-                  onClick={handleDownload}
-                  className="absolute bottom-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                  title="다운로드"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              </div>
+              <img
+                src={item.content}
+                alt="Shared"
+                className="max-w-full h-auto max-h-72 object-contain"
+              />
             )}
 
             {/* 동영상 메시지 */}
             {item.type === ContentType.VIDEO && (
-              <div className="relative group">
-                <video
-                  src={item.content}
-                  controls
-                  className="max-w-full h-auto max-h-72"
-                  playsInline
-                >
-                  동영상을 재생할 수 없습니다.
-                </video>
-                <button
-                  onClick={handleDownload}
-                  className="absolute bottom-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                  title="다운로드"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              </div>
+              <video
+                src={item.content}
+                className="max-w-full h-auto max-h-72"
+                playsInline
+                muted
+              >
+                동영상을 재생할 수 없습니다.
+              </video>
             )}
           </div>
 
