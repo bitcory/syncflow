@@ -31,7 +31,8 @@ import {
   User,
   ChevronDown,
   ChevronUp,
-  Users
+  Users,
+  Search
 } from 'lucide-react';
 
 // 기기 ID 생성 (브라우저별 고유)
@@ -91,6 +92,7 @@ const App: React.FC = () => {
   const [selectedMessage, setSelectedMessage] = useState<SharedItem | null>(null);
   const [replies, setReplies] = useState<any[]>([]);
   const [replyInput, setReplyInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const userListRef = useRef<HTMLDivElement>(null);
@@ -515,8 +517,8 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 border-b-4 border-gray-900 bg-[#4ECDC4] flex items-center justify-between px-4 md:px-6 shrink-0">
-          <div className="flex items-center gap-2">
+        <header className="h-16 border-b-4 border-gray-900 bg-[#4ECDC4] flex items-center gap-3 px-4 md:px-6 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden p-2 text-gray-900 hover:bg-[#FF6B6B] hover:text-white transition-colors border-2 border-gray-900 bg-white"
@@ -524,17 +526,40 @@ const App: React.FC = () => {
               <Menu className="w-5 h-5" />
             </button>
             {kakaoUser && (
-              <span className="text-gray-900 font-bold text-sm flex items-center gap-2 bg-white px-3 py-1 border-2 border-gray-900">
+              <span className="hidden sm:flex text-gray-900 font-bold text-sm items-center gap-2 bg-white px-3 py-1 border-2 border-gray-900">
                 {kakaoUser.profileImage ? (
                   <img src={kakaoUser.profileImage} alt="" className="w-5 h-5 rounded-full" />
                 ) : (
                   <User className="w-4 h-4" />
                 )}
-                <span className="hidden sm:inline">{kakaoUser.nickname}</span>
+                <span>{kakaoUser.nickname}</span>
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Search Input */}
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="메시지 검색..."
+                className="w-full pl-10 pr-4 py-2 text-sm border-2 border-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#FFE66D]"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleKakaoLogout}
               className="p-2 text-gray-900 hover:bg-[#FF6B6B] hover:text-white transition-colors border-2 border-gray-900 bg-white"
@@ -554,30 +579,62 @@ const App: React.FC = () => {
 
         {/* Feed Area */}
         <div ref={feedRef} className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 flex flex-col justify-end">
-          {sharedItems.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <div className="bg-white p-8 border-3 border-gray-900 shadow-[6px_6px_0px_#1a1a2e] text-center" style={{border: '3px solid #1a1a2e', boxShadow: '6px 6px 0px #1a1a2e'}}>
-                <div className="w-20 h-20 bg-[#FFE66D] border-3 border-gray-900 flex items-center justify-center mx-auto mb-4" style={{border: '3px solid #1a1a2e'}}>
-                  <MessageCircle className="w-10 h-10 text-gray-900" />
+          {(() => {
+            const filteredItems = searchQuery.trim()
+              ? sharedItems.filter(item =>
+                  (item.type === ContentType.TEXT && item.content.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                  item.sender.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+              : sharedItems;
+
+            if (sharedItems.length === 0) {
+              return (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <div className="bg-white p-8 border-3 border-gray-900 shadow-[6px_6px_0px_#1a1a2e] text-center" style={{border: '3px solid #1a1a2e', boxShadow: '6px 6px 0px #1a1a2e'}}>
+                    <div className="w-20 h-20 bg-[#FFE66D] border-3 border-gray-900 flex items-center justify-center mx-auto mb-4" style={{border: '3px solid #1a1a2e'}}>
+                      <MessageCircle className="w-10 h-10 text-gray-900" />
+                    </div>
+                    <p className="text-xl font-black text-gray-900 mb-2">공유된 항목이 없습니다</p>
+                    <p className="text-sm text-gray-600 font-medium">텍스트, 이미지, 동영상을 공유해보세요!</p>
+                  </div>
                 </div>
-                <p className="text-xl font-black text-gray-900 mb-2">공유된 항목이 없습니다</p>
-                <p className="text-sm text-gray-600 font-medium">텍스트, 이미지, 동영상을 공유해보세요!</p>
+              );
+            }
+
+            if (filteredItems.length === 0) {
+              return (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <div className="bg-white p-8 border-3 border-gray-900 shadow-[6px_6px_0px_#1a1a2e] text-center" style={{border: '3px solid #1a1a2e', boxShadow: '6px 6px 0px #1a1a2e'}}>
+                    <Search className="w-10 h-10 text-gray-400 mx-auto mb-4" />
+                    <p className="text-lg font-bold text-gray-900 mb-2">검색 결과가 없습니다</p>
+                    <p className="text-sm text-gray-600">"{searchQuery}"에 대한 결과를 찾을 수 없습니다</p>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                {searchQuery && (
+                  <div className="text-center py-2">
+                    <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1 border-2 border-gray-300 rounded-full">
+                      {filteredItems.length}개의 검색 결과
+                    </span>
+                  </div>
+                )}
+                {filteredItems.map(item => (
+                  <FeedItemCard
+                    key={item.id}
+                    item={item}
+                    currentUserId={kakaoUser?.id}
+                    currentUserName={kakaoUser?.nickname}
+                    onSelect={() => setSelectedMessage(item)}
+                    isSelected={selectedMessage?.id === item.id}
+                  />
+                ))}
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {sharedItems.map(item => (
-                <FeedItemCard
-                  key={item.id}
-                  item={item}
-                  currentUserId={kakaoUser?.id}
-                  currentUserName={kakaoUser?.nickname}
-                  onSelect={() => setSelectedMessage(item)}
-                  isSelected={selectedMessage?.id === item.id}
-                />
-              ))}
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Input Area */}
