@@ -701,9 +701,10 @@ const App: React.FC = () => {
       }
 
       addNotification(`${isImage ? '이미지' : '동영상'}가 전송되었습니다`, 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('전송 실패:', error);
-      addNotification('전송 실패', 'error');
+      const errorMessage = error?.message || error?.code || '알 수 없는 오류';
+      addNotification(`전송 실패: ${errorMessage}`, 'error');
     }
   };
 
