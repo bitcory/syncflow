@@ -245,7 +245,7 @@ const App: React.FC = () => {
       `}>
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <img src="/public/logo.png" alt="TB CHAT" className="w-12 h-12 rounded-full border-2 border-gray-900" />
+            <img src="/logo.png" alt="TB CHAT" className="w-12 h-12 rounded-full border-2 border-gray-900" />
             <div>
               <h1 className="text-2xl font-black text-gray-900 tracking-tight">TB CHAT</h1>
               <p className="text-xs text-gray-700 font-medium">실시간 공유</p>
