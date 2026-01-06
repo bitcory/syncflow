@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
 import { SharedItem, ContentType } from '../types';
-import { Download, Copy, Check } from 'lucide-react';
+import { Download, Copy, Check, ChevronDown } from 'lucide-react';
 
 interface Props {
   item: SharedItem;
   currentUserId?: number;
 }
 
+const MAX_LENGTH = 200; // 최대 표시 글자 수
+
 export const FeedItemCard: React.FC<Props> = ({ item, currentUserId }) => {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   // 내 메시지인지 확인
   const isMine = currentUserId && item.senderId === currentUserId;
+
+  // 긴 텍스트인지 확인
+  const isLongText = item.type === ContentType.TEXT && item.content.length > MAX_LENGTH;
+
+  // 표시할 텍스트
+  const displayText = isLongText && !expanded
+    ? item.content.slice(0, MAX_LENGTH) + '...'
+    : item.content;
 
   const decodeHtmlEntities = (text: string) => {
     const textarea = document.createElement('textarea');
@@ -71,9 +82,20 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId }) => {
               {/* 텍스트 메시지 */}
               {item.type === ContentType.TEXT && (
                 <div className="p-3 relative group">
-                  <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed">
-                    {item.content}
+                  <p
+                    className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed cursor-pointer"
+                    onClick={() => isLongText && setExpanded(!expanded)}
+                  >
+                    {displayText}
                   </p>
+                  {isLongText && !expanded && (
+                    <button
+                      onClick={() => setExpanded(true)}
+                      className="flex items-center justify-center w-full mt-2 text-gray-700 hover:text-gray-900"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={handleCopy}
                     className={`absolute top-2 right-2 p-1.5 rounded-full ${copied ? 'bg-[#4ECDC4]' : 'bg-white/50 hover:bg-white'} text-gray-900 opacity-0 group-hover:opacity-100 transition-all`}
@@ -161,9 +183,20 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId }) => {
             {/* 텍스트 메시지 */}
             {item.type === ContentType.TEXT && (
               <div className="p-3 relative group">
-                <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed">
-                  {item.content}
+                <p
+                  className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed cursor-pointer"
+                  onClick={() => isLongText && setExpanded(!expanded)}
+                >
+                  {displayText}
                 </p>
+                {isLongText && !expanded && (
+                  <button
+                    onClick={() => setExpanded(true)}
+                    className="flex items-center justify-center w-full mt-2 text-gray-700 hover:text-gray-900"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={handleCopy}
                   className={`absolute top-2 right-2 p-1.5 rounded-full ${copied ? 'bg-[#4ECDC4]' : 'bg-gray-100 hover:bg-[#FFE66D]'} text-gray-900 opacity-0 group-hover:opacity-100 transition-all`}

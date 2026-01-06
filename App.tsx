@@ -228,7 +228,6 @@ const App: React.FC = () => {
     try {
       await firebaseAddItem(newItem);
       setTextInput('');
-      addNotification('전송 완료!', 'success');
     } catch (error) {
       console.error('전송 실패:', error);
       addNotification('전송 실패', 'error');
@@ -268,7 +267,6 @@ const App: React.FC = () => {
 
       try {
         await firebaseAddItem(newItem);
-        addNotification(`${isVideo ? '동영상' : '이미지'} 전송 완료!`, 'success');
       } catch (error) {
         console.error('전송 실패:', error);
         addNotification('전송 실패', 'error');
