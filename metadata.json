@@ -1,0 +1,5 @@
+{
+  "name": "SyncFlow AI",
+  "description": "Gemini AI로 강화된 기기 간 클립보드 및 파일 공유 도구입니다. 가상 '룸'에 기기를 연결하여 텍스트, 이미지, 비디오를 공유하고 실시간 AI 분석 및 요약 기능을 이용해보세요.",
+  "requestFramePermissions": []
+}
