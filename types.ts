@@ -9,7 +9,9 @@ export interface SharedItem {
   type: ContentType;
   content: string; // Text content or Base64/URL for media
   fileName?: string;
-  sender: string; // Device name
+  sender: string; // User nickname
+  senderImage?: string; // Kakao profile image
+  senderId?: number; // Kakao user ID
   timestamp: number;
   aiAnalysis?: string; // Gemini generated summary or caption
   isProcessing?: boolean;

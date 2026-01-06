@@ -219,7 +219,9 @@ const App: React.FC = () => {
     const newItem = {
       type: ContentType.TEXT,
       content: textInput,
-      sender: currentDevice.name,
+      sender: kakaoUser?.nickname || currentDevice.name,
+      senderImage: kakaoUser?.profileImage || null,
+      senderId: kakaoUser?.id || null,
       timestamp: Date.now()
     };
 
@@ -258,7 +260,9 @@ const App: React.FC = () => {
         type: isVideo ? ContentType.VIDEO : ContentType.IMAGE,
         content: content,
         fileName: file.name,
-        sender: currentDevice.name,
+        sender: kakaoUser?.nickname || currentDevice.name,
+        senderImage: kakaoUser?.profileImage || null,
+        senderId: kakaoUser?.id || null,
         timestamp: Date.now()
       };
 
@@ -474,7 +478,7 @@ const App: React.FC = () => {
             </div>
           ) : (
             sharedItems.map(item => (
-              <FeedItemCard key={item.id} item={item} />
+              <FeedItemCard key={item.id} item={item} currentUserId={kakaoUser?.id} />
             ))
           )}
         </div>
