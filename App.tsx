@@ -297,12 +297,7 @@ const App: React.FC = () => {
     }
   }, [kakaoUser]);
 
-  // 새 메시지 시 하단으로 스크롤 (즉시)
-  useEffect(() => {
-    if (feedRef.current) {
-      feedRef.current.scrollTop = feedRef.current.scrollHeight;
-    }
-  }, [sharedItems]);
+  // flex-col-reverse 사용으로 스크롤 코드 불필요
 
   // 선택된 메시지가 삭제되면 패널 닫기
   useEffect(() => {
@@ -1228,8 +1223,8 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Feed Area */}
-        <div ref={feedRef} className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 flex flex-col">
+        {/* Feed Area - flex-col-reverse로 스크롤 맨 아래 시작 */}
+        <div ref={feedRef} className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 flex flex-col-reverse">
           {(() => {
             const filteredItems = searchQuery.trim()
               ? sharedItems.filter(item =>
@@ -1265,29 +1260,26 @@ const App: React.FC = () => {
             }
 
             return (
-              <>
-                {/* 메시지가 적을 때 아래쪽 정렬을 위한 spacer */}
-                <div className="flex-grow" />
-                <div className="space-y-4">
-                  {searchQuery && (
-                    <div className="text-center py-2">
-                      <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1 border-2 border-gray-300 rounded-full">
-                        {filteredItems.length}개의 검색 결과
-                      </span>
-                    </div>
-                  )}
-                  {filteredItems.map(item => (
-                    <FeedItemCard
-                      key={item.id}
-                      item={item}
-                      currentUserId={kakaoUser?.id}
-                      currentUserName={kakaoUser?.nickname}
-                      onSelect={() => setSelectedMessage(item)}
-                      isSelected={selectedMessage?.id === item.id}
-                    />
-                  ))}
-                </div>
-              </>
+              <div className="space-y-4">
+                {searchQuery && (
+                  <div className="text-center py-2">
+                    <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1 border-2 border-gray-300 rounded-full">
+                      {filteredItems.length}개의 검색 결과
+                    </span>
+                  </div>
+                )}
+                {/* flex-col-reverse이므로 역순으로 렌더링 */}
+                {[...filteredItems].reverse().map(item => (
+                  <FeedItemCard
+                    key={item.id}
+                    item={item}
+                    currentUserId={kakaoUser?.id}
+                    currentUserName={kakaoUser?.nickname}
+                    onSelect={() => setSelectedMessage(item)}
+                    isSelected={selectedMessage?.id === item.id}
+                  />
+                ))}
+              </div>
             );
           })()}
         </div>
