@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, push, onValue, serverTimestamp, onDisconnect, set, remove } from 'firebase/database';
+import { getDatabase, ref, push, onValue, serverTimestamp, onDisconnect, set, remove, get } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB9V_o6P_5jHhwm5Q8650FFVIZSU6C9F5U",
@@ -32,21 +32,51 @@ export const addSharedItem = (item: any) => {
 // 기기 등록
 export const registerDevice = (deviceId: string, deviceInfo: any) => {
   const deviceRef = ref(database, `devices/${deviceId}`);
-  set(deviceRef, {
-    ...deviceInfo,
-    connectedAt: serverTimestamp()
-  });
+
+  const updatePresence = () => {
+    set(deviceRef, {
+      ...deviceInfo,
+      lastSeen: Date.now()
+    });
+  };
+
+  // 초기 등록
+  updatePresence();
+
+  // 30초마다 lastSeen 업데이트 (heartbeat)
+  const heartbeat = setInterval(updatePresence, 30000);
 
   // 연결 해제 시 자동 삭제
   onDisconnect(deviceRef).remove();
 
-  return deviceRef;
+  // heartbeat 정리를 위한 cleanup 함수 반환
+  return () => {
+    clearInterval(heartbeat);
+    remove(deviceRef);
+  };
 };
 
 // 기기 등록 해제
 export const unregisterDevice = (deviceId: string) => {
   const deviceRef = ref(database, `devices/${deviceId}`);
   return remove(deviceRef);
+};
+
+// 오래된 기기 정리 (60초 이상 응답 없는 기기)
+export const cleanupStaleDevices = async () => {
+  const snapshot = await get(devicesRef);
+  const data = snapshot.val();
+
+  if (data) {
+    const now = Date.now();
+    const staleThreshold = 60000; // 60초
+
+    Object.entries(data).forEach(([deviceId, deviceInfo]: [string, any]) => {
+      if (deviceInfo.lastSeen && now - deviceInfo.lastSeen > staleThreshold) {
+        remove(ref(database, `devices/${deviceId}`));
+      }
+    });
+  }
 };
 
 export { database, ref, onValue };

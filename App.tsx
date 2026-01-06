@@ -7,7 +7,7 @@ import {
   devicesRef,
   addSharedItem as firebaseAddItem,
   registerDevice,
-  unregisterDevice,
+  cleanupStaleDevices,
   onValue
 } from './services/firebase';
 import {
@@ -86,8 +86,11 @@ const App: React.FC = () => {
   useEffect(() => {
     setIsConnecting(true);
 
-    // 기기 등록
-    registerDevice(deviceId, {
+    // 오래된 기기 정리
+    cleanupStaleDevices();
+
+    // 기기 등록 (cleanup 함수 반환)
+    const cleanupDevice = registerDevice(deviceId, {
       id: deviceId,
       name: deviceName,
       type: deviceType
@@ -152,7 +155,7 @@ const App: React.FC = () => {
     return () => {
       unsubscribeItems();
       unsubscribeDevices();
-      unregisterDevice(deviceId);
+      cleanupDevice();
     };
   }, []);
 
