@@ -729,15 +729,26 @@ const App: React.FC = () => {
         </div>
       </main>
 
+      {/* Mobile Thread Overlay */}
+      {selectedMessage && (
+        <div
+          className="fixed inset-0 bg-black/30 z-40 md:hidden"
+          onClick={() => setSelectedMessage(null)}
+        />
+      )}
+
       {/* Right Panel - Thread/Replies */}
       {selectedMessage && (
-        <aside className="hidden md:flex w-96 bg-white border-l-4 border-gray-900 flex-col h-screen shrink-0">
+        <aside className={`
+          fixed inset-0 z-50 md:static md:z-auto
+          md:w-96 bg-white md:border-l-4 border-gray-900 flex flex-col h-screen md:shrink-0
+        `}>
           {/* Thread Header */}
           <div className="p-4 border-b-3 border-gray-900 flex items-center justify-between bg-[#4ECDC4]" style={{borderBottom: '3px solid #1a1a2e'}}>
             <h3 className="font-bold text-gray-900">스레드</h3>
             <button
               onClick={() => setSelectedMessage(null)}
-              className="p-1.5 hover:bg-white/50 rounded transition-colors"
+              className="p-2 hover:bg-white/50 rounded transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
