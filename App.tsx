@@ -21,6 +21,7 @@ import {
   setAdmin,
   addUserToRoom,
   removeUserFromRoom,
+  uploadFileToStorage,
   onValue
 } from './services/firebase';
 import { initKakao, kakaoLogin, kakaoLogout, getStoredUser, KakaoUser } from './services/kakao';
@@ -50,7 +51,8 @@ import {
   Shield,
   UserPlus,
   Crown,
-  UserMinus
+  UserMinus,
+  Upload
 } from 'lucide-react';
 
 // 슈퍼관리자 이름 (고정)
@@ -122,7 +124,9 @@ const App: React.FC = () => {
   const [adminList, setAdminList] = useState<string[]>([]);
   const [selectedUserForRoom, setSelectedUserForRoom] = useState<DeviceProfile | null>(null);
   const [isRoomSelectOpen, setIsRoomSelectOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const userListRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -574,18 +578,24 @@ const App: React.FC = () => {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      addNotification('파일 크기는 10MB 이하만 지원됩니다.', 'error');
+    // Firebase Storage 사용 - 100MB까지 허용
+    const maxSize = 100 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      addNotification(`파일이 너무 큽니다 (${sizeMB}MB). 100MB 이하만 지원됩니다.`, 'error');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const content = event.target?.result as string;
+    try {
+      addNotification('파일 업로드 중...', 'info');
+
+      // Storage에 파일 업로드
+      const userId = kakaoUser?.id ? String(kakaoUser.id) : currentDevice.id;
+      const downloadURL = await uploadFileToStorage(file, currentRoomId, userId);
 
       const newItem = {
         type: isVideo ? ContentType.VIDEO : ContentType.IMAGE,
-        content: content,
+        content: downloadURL,
         fileName: file.name,
         sender: kakaoUser?.nickname || currentDevice.name,
         senderImage: kakaoUser?.profileImage || null,
@@ -593,19 +603,117 @@ const App: React.FC = () => {
         timestamp: Date.now()
       };
 
-      try {
-        if (currentRoomId) {
-          await addMessageToRoom(currentRoomId, newItem);
-        } else {
-          await firebaseAddItem(newItem);
-        }
-      } catch (error) {
-        console.error('전송 실패:', error);
-        addNotification('전송 실패', 'error');
+      if (currentRoomId) {
+        await addMessageToRoom(currentRoomId, newItem);
+      } else {
+        await firebaseAddItem(newItem);
       }
-    };
-    reader.readAsDataURL(file);
+
+      addNotification('파일이 전송되었습니다', 'success');
+    } catch (error) {
+      console.error('전송 실패:', error);
+      addNotification('전송 실패', 'error');
+    }
+
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // 파일 처리 공통 함수 (드래그앤드롭, 클립보드용)
+  const processFile = async (file: File) => {
+    const isVideo = file.type.startsWith('video');
+    const isImage = file.type.startsWith('image');
+
+    if (!isVideo && !isImage) {
+      addNotification('이미지와 비디오만 지원됩니다.', 'error');
+      return;
+    }
+
+    // Firebase Storage 사용 - 100MB까지 허용
+    const maxSize = 100 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      addNotification(`파일이 너무 큽니다 (${sizeMB}MB). 100MB 이하만 지원됩니다.`, 'error');
+      return;
+    }
+
+    try {
+      addNotification('파일 업로드 중...', 'info');
+
+      // Storage에 파일 업로드
+      const userId = kakaoUser?.id ? String(kakaoUser.id) : currentDevice.id;
+      const downloadURL = await uploadFileToStorage(file, currentRoomId, userId);
+
+      const newItem = {
+        type: isVideo ? ContentType.VIDEO : ContentType.IMAGE,
+        content: downloadURL,
+        fileName: file.name,
+        sender: kakaoUser?.nickname || currentDevice.name,
+        senderImage: kakaoUser?.profileImage || null,
+        senderId: kakaoUser?.id || null,
+        timestamp: Date.now()
+      };
+
+      if (currentRoomId) {
+        await addMessageToRoom(currentRoomId, newItem);
+      } else {
+        await firebaseAddItem(newItem);
+      }
+
+      addNotification(`${isImage ? '이미지' : '동영상'}가 전송되었습니다`, 'success');
+    } catch (error) {
+      console.error('전송 실패:', error);
+      addNotification('전송 실패', 'error');
+    }
+  };
+
+  // 드래그 이벤트 핸들러
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // 실제로 드롭존을 벗어났는지 확인
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      await processFile(file);
+    }
+  };
+
+  // 클립보드 붙여넣기 핸들러
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image') || item.type.startsWith('video')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          await processFile(file);
+        }
+        return;
+      }
+    }
   };
 
   // 로그인 안 된 경우 인트로 화면 표시
@@ -842,7 +950,28 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main
+        ref={dropZoneRef}
+        className="flex-1 flex flex-col h-screen overflow-hidden relative"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        {/* 드래그 오버레이 */}
+        {isDragging && (
+          <div className="absolute inset-0 z-40 bg-[#4ECDC4]/90 flex items-center justify-center pointer-events-none">
+            <div className="bg-white border-4 border-gray-900 p-8 shadow-[8px_8px_0px_#1a1a2e]" style={{boxShadow: '8px 8px 0px #1a1a2e'}}>
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 bg-[#FFE66D] border-3 border-gray-900 rounded-full flex items-center justify-center animate-bounce" style={{border: '3px solid #1a1a2e'}}>
+                  <Upload className="w-10 h-10" />
+                </div>
+                <p className="text-xl font-bold text-gray-900">여기에 파일을 놓으세요</p>
+                <p className="text-sm text-gray-600">이미지 또는 동영상 (최대 100MB)</p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <header className="h-16 border-b-4 border-gray-900 bg-[#4ECDC4] flex items-center gap-3 px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-2 shrink-0">
@@ -1007,7 +1136,7 @@ const App: React.FC = () => {
                   <textarea
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
-                    placeholder="공유할 텍스트를 입력하세요..."
+                    placeholder="공유할 텍스트를 입력하세요... (이미지 붙여넣기 가능)"
                     className="w-full bg-white text-gray-900 placeholder-gray-500 p-4 pr-14 outline-none border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] transition-all resize-none h-24 font-medium focus:shadow-[6px_6px_0px_#1a1a2e] text-base"
                     style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e', fontSize: '16px'}}
                     onKeyDown={(e) => {
@@ -1016,6 +1145,7 @@ const App: React.FC = () => {
                         handleSendText();
                       }
                     }}
+                    onPaste={handlePaste}
                   />
                   <button
                     onClick={handleSendText}
@@ -1043,7 +1173,7 @@ const App: React.FC = () => {
                       {activeTab === ContentType.IMAGE ? <ImageIcon className="w-5 h-5" /> : <Film className="w-5 h-5" />}
                     </div>
                     <span className="text-sm font-bold">클릭하여 {activeTab === ContentType.IMAGE ? '사진' : '동영상'} 선택</span>
-                    <span className="text-xs text-gray-500 mt-1 font-medium">최대 10MB</span>
+                    <span className="text-xs text-gray-500 mt-1 font-medium">최대 100MB</span>
                   </div>
                 </div>
               )}

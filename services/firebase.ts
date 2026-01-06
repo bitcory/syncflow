@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, push, onValue, serverTimestamp, onDisconnect, set, remove, get, update } from 'firebase/database';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB9V_o6P_5jHhwm5Q8650FFVIZSU6C9F5U",
@@ -14,6 +15,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const storage = getStorage(app);
 
 // 채팅방 레퍼런스
 export const chatRoomsRef = ref(database, 'chatRooms');
@@ -187,4 +189,26 @@ export const getRoomMembers = async (roomId: string) => {
   return snapshot.val();
 };
 
-export { database, ref, onValue };
+// Firebase Storage에 파일 업로드
+export const uploadFileToStorage = async (
+  file: File,
+  roomId: string | null,
+  userId: string
+): Promise<string> => {
+  // 고유한 파일 경로 생성
+  const timestamp = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const folder = roomId ? `rooms/${roomId}` : 'general';
+  const path = `chat-media/${folder}/${userId}/${timestamp}_${safeName}`;
+
+  const fileRef = storageRef(storage, path);
+
+  // 파일 업로드
+  const snapshot = await uploadBytes(fileRef, file);
+
+  // 다운로드 URL 반환
+  const downloadURL = await getDownloadURL(snapshot.ref);
+  return downloadURL;
+};
+
+export { database, storage, ref, onValue };
