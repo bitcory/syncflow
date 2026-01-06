@@ -25,7 +25,8 @@ import {
   Menu,
   X,
   Zap,
-  MessageCircle
+  MessageCircle,
+  RefreshCw
 } from 'lucide-react';
 
 // 기기 ID 생성 (브라우저별 고유)
@@ -244,9 +245,7 @@ const App: React.FC = () => {
       `}>
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="bg-[#FF6B6B] p-3 border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e]" style={{border: '3px solid #1a1a2e'}}>
-              <MessageCircle className="text-white w-6 h-6" />
-            </div>
+            <img src="/public/logo.png" alt="TB CHAT" className="w-12 h-12 rounded-full border-2 border-gray-900" />
             <div>
               <h1 className="text-2xl font-black text-gray-900 tracking-tight">TB CHAT</h1>
               <p className="text-xs text-gray-700 font-medium">실시간 공유</p>
@@ -370,7 +369,8 @@ const App: React.FC = () => {
         {/* Input Area */}
         <div className="fixed md:static bottom-0 left-0 right-0 p-4 md:p-6 bg-[#FF6B6B] border-t-4 border-gray-900 shrink-0 z-30">
           <div className="max-w-4xl mx-auto">
-            <div className="flex gap-2 mb-4">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex gap-2">
               <button
                 onClick={() => setActiveTab(ContentType.TEXT)}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all border-2 border-gray-900 ${
@@ -403,6 +403,14 @@ const App: React.FC = () => {
                 style={activeTab === ContentType.VIDEO ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
               >
                 <Film className="w-4 h-4" /> 동영상
+              </button>
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="p-2 bg-white hover:bg-[#4ECDC4] text-gray-900 border-2 border-gray-900 transition-all"
+                title="새로고침"
+              >
+                <RefreshCw className="w-5 h-5" />
               </button>
             </div>
 
