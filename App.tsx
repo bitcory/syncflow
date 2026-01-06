@@ -130,12 +130,9 @@ const App: React.FC = () => {
 
         setSharedItems(items);
 
-        // 새 메시지 알림 (다른 기기에서 온 경우)
+        // 처리된 메시지 ID 추적
         items.forEach(item => {
-          if (!processedIds.current.has(item.id) && item.sender !== deviceName) {
-            addNotification(`${item.sender}에서 새 메시지 도착`, 'info');
-            processedIds.current.add(item.id);
-          }
+          processedIds.current.add(item.id);
         });
       } else {
         setSharedItems([]);
