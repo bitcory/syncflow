@@ -349,7 +349,7 @@ const App: React.FC = () => {
         </header>
 
         {/* Feed Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 pb-48 md:pb-6 space-y-6">
           {sharedItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
               <div className="bg-white p-8 border-3 border-gray-900 shadow-[6px_6px_0px_#1a1a2e] text-center" style={{border: '3px solid #1a1a2e', boxShadow: '6px 6px 0px #1a1a2e'}}>
@@ -368,7 +368,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 md:p-6 bg-[#FF6B6B] border-t-4 border-gray-900 shrink-0">
+        <div className="fixed md:static bottom-0 left-0 right-0 p-4 md:p-6 bg-[#FF6B6B] border-t-4 border-gray-900 shrink-0 z-30">
           <div className="max-w-4xl mx-auto">
             <div className="flex gap-2 mb-4">
               <button
