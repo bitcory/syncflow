@@ -7,7 +7,8 @@ export enum ContentType {
 export interface SharedItem {
   id: string;
   type: ContentType;
-  content: string; // Text content or Base64/URL for media
+  content: string; // Text content or Base64/URL for media (원본)
+  thumbnailUrl?: string; // 압축된 썸네일 URL (이미지용)
   fileName?: string;
   sender: string; // User nickname
   senderImage?: string; // Kakao profile image

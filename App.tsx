@@ -95,6 +95,57 @@ const getDeviceName = () => {
   return name;
 };
 
+// 이미지 압축 함수 (썸네일 생성)
+const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.7): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        // 비율 유지하며 리사이즈
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context not available'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], `thumb_${file.name}`, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressedFile);
+            } else {
+              reject(new Error('Compression failed'));
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('File read failed'));
+    reader.readAsDataURL(file);
+  });
+};
+
 const App: React.FC = () => {
   const deviceId = getDeviceId();
   const deviceType = detectDeviceType();
@@ -206,6 +257,7 @@ const App: React.FC = () => {
             id: key,
             type: value.type,
             content: value.content,
+            thumbnailUrl: value.thumbnailUrl,
             fileName: value.fileName,
             sender: value.sender,
             senderImage: value.senderImage,
@@ -352,6 +404,7 @@ const App: React.FC = () => {
             id: key,
             type: value.type,
             content: value.content,
+            thumbnailUrl: value.thumbnailUrl,
             fileName: value.fileName,
             sender: value.sender,
             senderImage: value.senderImage,
@@ -633,50 +686,8 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isVideo = file.type.startsWith('video');
-    const isImage = file.type.startsWith('image');
-
-    if (!isVideo && !isImage) {
-      addNotification('이미지와 비디오만 지원됩니다.', 'error');
-      return;
-    }
-
-    // Firebase Storage 사용 - 100MB까지 허용
-    const maxSize = 100 * 1024 * 1024;
-    if (file.size > maxSize) {
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      addNotification(`파일이 너무 큽니다 (${sizeMB}MB). 100MB 이하만 지원됩니다.`, 'error');
-      return;
-    }
-
-    try {
-      addNotification('파일 업로드 중...', 'info');
-
-      // Storage에 파일 업로드
-      const userId = kakaoUser?.id ? String(kakaoUser.id) : currentDevice.id;
-      const downloadURL = await uploadFileToStorage(file, currentRoomId, userId);
-
-      const newItem = {
-        type: isVideo ? ContentType.VIDEO : ContentType.IMAGE,
-        content: downloadURL,
-        fileName: file.name,
-        sender: kakaoUser?.nickname || currentDevice.name,
-        senderImage: kakaoUser?.profileImage || null,
-        senderId: kakaoUser?.id || null,
-        timestamp: Date.now()
-      };
-
-      if (currentRoomId) {
-        await addMessageToRoom(currentRoomId, newItem);
-      } else {
-        await firebaseAddItem(newItem);
-      }
-
-      addNotification('파일이 전송되었습니다', 'success');
-    } catch (error) {
-      console.error('전송 실패:', error);
-      addNotification('전송 실패', 'error');
-    }
+    // processFile 함수 재사용
+    await processFile(file);
 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -702,11 +713,23 @@ const App: React.FC = () => {
     try {
       addNotification('파일 업로드 중...', 'info');
 
-      // Storage에 파일 업로드
       const userId = kakaoUser?.id ? String(kakaoUser.id) : currentDevice.id;
+
+      // 원본 업로드
       const downloadURL = await uploadFileToStorage(file, currentRoomId, userId);
 
-      const newItem = {
+      // 이미지인 경우 썸네일도 생성 및 업로드
+      let thumbnailURL = null;
+      if (isImage) {
+        try {
+          const thumbnailFile = await compressImage(file);
+          thumbnailURL = await uploadFileToStorage(thumbnailFile, currentRoomId, userId);
+        } catch (thumbError) {
+          console.warn('썸네일 생성 실패, 원본 사용:', thumbError);
+        }
+      }
+
+      const newItem: any = {
         type: isVideo ? ContentType.VIDEO : ContentType.IMAGE,
         content: downloadURL,
         fileName: file.name,
@@ -715,6 +738,11 @@ const App: React.FC = () => {
         senderId: kakaoUser?.id || null,
         timestamp: Date.now()
       };
+
+      // 썸네일 URL이 있으면 추가
+      if (thumbnailURL) {
+        newItem.thumbnailUrl = thumbnailURL;
+      }
 
       if (currentRoomId) {
         await addMessageToRoom(currentRoomId, newItem);
@@ -1118,14 +1146,6 @@ const App: React.FC = () => {
           })()}
         </div>
 
-        {/* Info */}
-        <div className="mt-auto pt-4 border-t-2 border-gray-900">
-          <div className="text-xs text-gray-700 leading-relaxed font-medium">
-            <strong className="text-gray-900">사용 방법:</strong><br/>
-            다른 기기에서 같은 URL을 열면<br/>
-            자동으로 실시간 동기화됩니다.
-          </div>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -1407,7 +1427,7 @@ const App: React.FC = () => {
                     <p className="text-sm text-gray-900 mt-1 whitespace-pre-wrap break-words">{selectedMessage.content}</p>
                   ) : selectedMessage.type === ContentType.IMAGE ? (
                     <img
-                      src={selectedMessage.content}
+                      src={selectedMessage.thumbnailUrl || selectedMessage.content}
                       alt="Shared"
                       className="mt-2 max-w-full max-h-64 rounded-lg border-2 border-gray-900 cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={handleDownloadMedia}

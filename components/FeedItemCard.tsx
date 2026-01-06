@@ -75,10 +75,10 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
                 </div>
               )}
 
-              {/* 이미지 메시지 */}
+              {/* 이미지 메시지 - 썸네일 우선 표시 */}
               {item.type === ContentType.IMAGE && (
                 <img
-                  src={item.content}
+                  src={item.thumbnailUrl || item.content}
                   alt="Shared"
                   className="max-w-full h-auto max-h-72 object-contain"
                 />
@@ -150,10 +150,10 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
               </div>
             )}
 
-            {/* 이미지 메시지 */}
+            {/* 이미지 메시지 - 썸네일 우선 표시 */}
             {item.type === ContentType.IMAGE && (
               <img
-                src={item.content}
+                src={item.thumbnailUrl || item.content}
                 alt="Shared"
                 className="max-w-full h-auto max-h-72 object-contain"
               />
