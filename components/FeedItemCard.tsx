@@ -1,12 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SharedItem, ContentType } from '../types';
-import { FileText, Image as ImageIcon, Film, Monitor, Smartphone, Laptop, Download } from 'lucide-react';
+import { FileText, Image as ImageIcon, Film, Monitor, Smartphone, Laptop, Download, Copy, Check } from 'lucide-react';
 
 interface Props {
   item: SharedItem;
 }
 
 export const FeedItemCard: React.FC<Props> = ({ item }) => {
+  const [copied, setCopied] = useState(false);
+
+  const decodeHtmlEntities = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
+  const handleCopy = async () => {
+    try {
+      const decodedText = decodeHtmlEntities(item.content);
+      await navigator.clipboard.writeText(decodedText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
+  };
+
   const getIcon = () => {
     switch (item.type) {
       case ContentType.TEXT: return <FileText className="w-5 h-5" />;
@@ -82,7 +101,16 @@ export const FeedItemCard: React.FC<Props> = ({ item }) => {
 
       <div className="p-4">
         {item.type === ContentType.TEXT && (
-          <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed font-medium">{item.content}</p>
+          <div className="relative group">
+            <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed font-medium pr-10">{item.content}</p>
+            <button
+              onClick={handleCopy}
+              className={`absolute top-0 right-0 p-2 ${copied ? 'bg-[#4ECDC4]' : 'bg-[#FFE66D] hover:bg-[#4ECDC4]'} text-gray-900 border-2 border-gray-900 transition-all`}
+              title={copied ? '복사됨!' : '복사'}
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
         )}
 
         {item.type === ContentType.IMAGE && (
