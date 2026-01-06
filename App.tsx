@@ -30,7 +30,10 @@ import {
   RefreshCw,
   LogIn,
   LogOut,
-  User
+  User,
+  ChevronDown,
+  ChevronUp,
+  Users
 } from 'lucide-react';
 
 // 기기 ID 생성 (브라우저별 고유)
@@ -85,6 +88,7 @@ const App: React.FC = () => {
   const [textInput, setTextInput] = useState('');
   const [activeTab, setActiveTab] = useState<ContentType>(ContentType.TEXT);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoUser | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedIds = useRef<Set<string>>(new Set());
@@ -345,63 +349,55 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Connection Status */}
-        <div className="bg-white p-4 border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] mb-6" style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e'}}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-gray-700 uppercase">연결 상태</span>
-            <div className={`flex items-center gap-1.5 px-2 py-1 ${isConnecting ? 'bg-[#FFE66D]' : (isConnected ? 'bg-[#4ECDC4]' : 'bg-[#FF6B6B]')} border-2 border-gray-900`}>
-              {isConnecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-              <span className="text-xs font-bold">
-                {isConnecting ? '연결 중...' : (isConnected ? '연결됨' : '연결 안됨')}
-              </span>
+        {/* User List - Compact with Dropdown */}
+        <div className="mb-6">
+          <button
+            onClick={() => setIsUserListOpen(!isUserListOpen)}
+            className="w-full bg-white p-3 border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] flex items-center justify-between hover:bg-gray-50 transition-colors"
+            style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e'}}
+          >
+            <div className="flex items-center gap-3">
+              <Users className="w-5 h-5 text-[#4ECDC4]" />
+              <span className="text-sm font-bold">접속 중인 사용자</span>
+              <span className="px-2 py-0.5 bg-[#4ECDC4] text-xs font-bold border-2 border-gray-900">{availableDevices.length}</span>
             </div>
-          </div>
-          <div className="flex items-center gap-2 mt-3">
-            <Wifi className="w-4 h-4 text-[#4ECDC4]" />
-            <span className="text-sm text-gray-700 font-medium">어디서든 실시간 동기화</span>
-          </div>
-        </div>
+            {isUserListOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </button>
 
-        {/* User List */}
-        <div className="mb-6 flex-1">
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-xs font-bold text-gray-700 uppercase">
-              접속 중인 사용자 ({availableDevices.length})
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            {availableDevices.length > 0 ? (
-              availableDevices.map(user => (
-                <div
-                  key={user.id}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-all border-2 border-gray-900 ${
-                    kakaoUser && String(kakaoUser.id) === user.id
-                      ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
-                      : 'bg-white hover:bg-gray-100'
-                  }`}
-                  style={kakaoUser && String(kakaoUser.id) === user.id ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
-                >
-                  {user.profileImage ? (
-                    <img src={user.profileImage} alt={user.name} className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#FFE66D] border-2 border-gray-900 flex items-center justify-center">
-                      <span className="text-xs font-bold">{user.name.charAt(0)}</span>
+          {isUserListOpen && (
+            <div className="mt-2 space-y-2">
+              {availableDevices.length > 0 ? (
+                availableDevices.map(user => (
+                  <div
+                    key={user.id}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-all border-2 border-gray-900 ${
+                      kakaoUser && String(kakaoUser.id) === user.id
+                        ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
+                        : 'bg-white hover:bg-gray-100'
+                    }`}
+                    style={kakaoUser && String(kakaoUser.id) === user.id ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
+                  >
+                    {user.profileImage ? (
+                      <img src={user.profileImage} alt={user.name} className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[#FFE66D] border-2 border-gray-900 flex items-center justify-center">
+                        <span className="text-xs font-bold">{user.name.charAt(0)}</span>
+                      </div>
+                    )}
+                    <div className="flex-1 text-left">
+                      <div className="font-bold">{user.name}</div>
+                      {kakaoUser && String(kakaoUser.id) === user.id && <div className="text-[10px] font-medium">나</div>}
                     </div>
-                  )}
-                  <div className="flex-1 text-left">
-                    <div className="font-bold">{user.name}</div>
-                    {kakaoUser && String(kakaoUser.id) === user.id && <div className="text-[10px] font-medium">나</div>}
+                    <div className="w-2 h-2 bg-[#4ECDC4] rounded-full border border-gray-900"></div>
                   </div>
-                  <div className="w-2 h-2 bg-[#4ECDC4] rounded-full border border-gray-900"></div>
-                </div>
-              ))
-            ) : (
-               <div className="text-center py-6 text-gray-600 text-xs font-medium bg-white border-2 border-gray-900 border-dashed">
-                 접속 중인 사용자가 없습니다
-               </div>
-            )}
-          </div>
+                ))
+              ) : (
+                 <div className="text-center py-4 text-gray-600 text-xs font-medium bg-white border-2 border-gray-900 border-dashed">
+                   접속 중인 사용자가 없습니다
+                 </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Info */}
@@ -539,23 +535,25 @@ const App: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-24 border-3 border-dashed border-gray-900 flex flex-col items-center justify-center bg-white text-gray-700 hover:bg-[#FFE66D] transition-all cursor-pointer"
-                  style={{borderWidth: '3px'}}
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept={activeTab === ContentType.IMAGE ? "image/*" : "video/*"}
-                    onChange={handleFileUpload}
-                  />
-                  <div className="p-3 bg-[#4ECDC4] border-2 border-gray-900 mb-2">
-                    {activeTab === ContentType.IMAGE ? <ImageIcon className="w-5 h-5" /> : <Film className="w-5 h-5" />}
+                <div className="flex justify-center">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full max-w-xs h-28 border-3 border-dashed border-gray-900 flex flex-col items-center justify-center bg-white text-gray-700 hover:bg-[#FFE66D] transition-all cursor-pointer rounded-lg"
+                    style={{borderWidth: '3px'}}
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept={activeTab === ContentType.IMAGE ? "image/*" : "video/*"}
+                      onChange={handleFileUpload}
+                    />
+                    <div className="p-3 bg-[#4ECDC4] border-2 border-gray-900 mb-2 rounded">
+                      {activeTab === ContentType.IMAGE ? <ImageIcon className="w-5 h-5" /> : <Film className="w-5 h-5" />}
+                    </div>
+                    <span className="text-sm font-bold">클릭하여 {activeTab === ContentType.IMAGE ? '사진' : '동영상'} 선택</span>
+                    <span className="text-xs text-gray-500 mt-1 font-medium">최대 10MB</span>
                   </div>
-                  <span className="text-sm font-bold">클릭하여 {activeTab === ContentType.IMAGE ? '사진' : '동영상'} 선택</span>
-                  <span className="text-xs text-gray-500 mt-1 font-medium">최대 10MB</span>
                 </div>
               )}
             </div>
