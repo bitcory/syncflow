@@ -477,7 +477,7 @@ const App: React.FC = () => {
         </header>
 
         {/* Feed Area */}
-        <div ref={feedRef} className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 space-y-4">
+        <div ref={feedRef} className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 flex flex-col justify-end">
           {sharedItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
               <div className="bg-white p-8 border-3 border-gray-900 shadow-[6px_6px_0px_#1a1a2e] text-center" style={{border: '3px solid #1a1a2e', boxShadow: '6px 6px 0px #1a1a2e'}}>
@@ -489,9 +489,11 @@ const App: React.FC = () => {
               </div>
             </div>
           ) : (
-            sharedItems.map(item => (
-              <FeedItemCard key={item.id} item={item} currentUserId={kakaoUser?.id} currentUserName={kakaoUser?.nickname} />
-            ))
+            <div className="space-y-4">
+              {sharedItems.map(item => (
+                <FeedItemCard key={item.id} item={item} currentUserId={kakaoUser?.id} currentUserName={kakaoUser?.nickname} />
+              ))}
+            </div>
           )}
         </div>
 
