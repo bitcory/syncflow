@@ -297,15 +297,10 @@ const App: React.FC = () => {
     }
   }, [kakaoUser]);
 
-  // 새 메시지 시 하단으로 스크롤
+  // 새 메시지 시 하단으로 스크롤 (즉시)
   useEffect(() => {
     if (feedRef.current) {
-      // 약간의 딜레이 후 스크롤 (렌더링 완료 대기)
-      setTimeout(() => {
-        if (feedRef.current) {
-          feedRef.current.scrollTop = feedRef.current.scrollHeight;
-        }
-      }, 100);
+      feedRef.current.scrollTop = feedRef.current.scrollHeight;
     }
   }, [sharedItems]);
 

@@ -75,22 +75,24 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
                 </div>
               )}
 
-              {/* 이미지 메시지 - 썸네일 우선 표시 */}
+              {/* 이미지 메시지 - 썸네일 우선 표시, lazy loading */}
               {item.type === ContentType.IMAGE && (
                 <img
                   src={item.thumbnailUrl || item.content}
                   alt="Shared"
+                  loading="lazy"
                   className="max-w-full h-auto max-h-72 object-contain"
                 />
               )}
 
-              {/* 동영상 메시지 */}
+              {/* 동영상 메시지 - lazy loading */}
               {item.type === ContentType.VIDEO && (
                 <video
                   src={item.content}
                   className="max-w-full h-auto max-h-72"
                   playsInline
                   muted
+                  preload="none"
                 >
                   동영상을 재생할 수 없습니다.
                 </video>
@@ -150,22 +152,24 @@ export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUser
               </div>
             )}
 
-            {/* 이미지 메시지 - 썸네일 우선 표시 */}
+            {/* 이미지 메시지 - 썸네일 우선 표시, lazy loading */}
             {item.type === ContentType.IMAGE && (
               <img
                 src={item.thumbnailUrl || item.content}
                 alt="Shared"
+                loading="lazy"
                 className="max-w-full h-auto max-h-72 object-contain"
               />
             )}
 
-            {/* 동영상 메시지 */}
+            {/* 동영상 메시지 - lazy loading */}
             {item.type === ContentType.VIDEO && (
               <video
                 src={item.content}
                 className="max-w-full h-auto max-h-72"
                 playsInline
                 muted
+                preload="none"
               >
                 동영상을 재생할 수 없습니다.
               </video>
