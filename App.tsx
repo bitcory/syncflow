@@ -11,6 +11,7 @@ import {
   clearAllSharedItems,
   onValue
 } from './services/firebase';
+import { initKakao, kakaoLogin, kakaoLogout, getStoredUser, KakaoUser } from './services/kakao';
 import {
   Wifi,
   Send,
@@ -26,7 +27,10 @@ import {
   X,
   Zap,
   MessageCircle,
-  RefreshCw
+  RefreshCw,
+  LogIn,
+  LogOut,
+  User
 } from 'lucide-react';
 
 // 기기 ID 생성 (브라우저별 고유)
@@ -81,8 +85,18 @@ const App: React.FC = () => {
   const [textInput, setTextInput] = useState('');
   const [activeTab, setActiveTab] = useState<ContentType>(ContentType.TEXT);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [kakaoUser, setKakaoUser] = useState<KakaoUser | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedIds = useRef<Set<string>>(new Set());
+
+  // 카카오 SDK 초기화
+  useEffect(() => {
+    initKakao();
+    const storedUser = getStoredUser();
+    if (storedUser) {
+      setKakaoUser(storedUser);
+    }
+  }, []);
 
   // Firebase 연결 및 데이터 구독
   useEffect(() => {
@@ -174,6 +188,28 @@ const App: React.FC = () => {
       }
     } else if (password !== null) {
       addNotification('비밀번호가 틀렸습니다', 'error');
+    }
+  };
+
+  const handleKakaoLogin = async () => {
+    try {
+      const user = await kakaoLogin();
+      if (user) {
+        setKakaoUser(user);
+        addNotification(`${user.nickname}님 환영합니다!`, 'success');
+      }
+    } catch (err) {
+      addNotification('로그인에 실패했습니다', 'error');
+    }
+  };
+
+  const handleKakaoLogout = async () => {
+    try {
+      await kakaoLogout();
+      setKakaoUser(null);
+      addNotification('로그아웃 되었습니다', 'info');
+    } catch (err) {
+      addNotification('로그아웃에 실패했습니다', 'error');
     }
   };
 
@@ -356,13 +392,43 @@ const App: React.FC = () => {
               <span className="sm:hidden">{currentDevice.name.split(' ')[0]}</span>
             </span>
           </div>
-          <button
-            onClick={handleClearAll}
-            className="p-2 text-gray-900 hover:bg-[#FF6B6B] hover:text-white transition-colors border-2 border-gray-900 bg-white"
-            title="전체 삭제"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {kakaoUser ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-gray-900 hidden sm:flex items-center gap-1 bg-[#FFE66D] px-3 py-1 border-2 border-gray-900">
+                  {kakaoUser.profileImage ? (
+                    <img src={kakaoUser.profileImage} alt="" className="w-5 h-5 rounded-full" />
+                  ) : (
+                    <User className="w-4 h-4" />
+                  )}
+                  {kakaoUser.nickname}
+                </span>
+                <button
+                  onClick={handleKakaoLogout}
+                  className="p-2 text-gray-900 hover:bg-[#4ECDC4] hover:text-white transition-colors border-2 border-gray-900 bg-white"
+                  title="로그아웃"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleKakaoLogin}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#FEE500] hover:bg-[#FADA0A] text-gray-900 font-bold text-sm border-2 border-gray-900 transition-colors"
+                title="카카오 로그인"
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="hidden sm:inline">로그인</span>
+              </button>
+            )}
+            <button
+              onClick={handleClearAll}
+              className="p-2 text-gray-900 hover:bg-[#FF6B6B] hover:text-white transition-colors border-2 border-gray-900 bg-white"
+              title="전체 삭제"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          </div>
         </header>
 
         {/* Feed Area */}
