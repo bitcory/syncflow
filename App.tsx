@@ -23,6 +23,7 @@ import {
   addUserToRoom,
   removeUserFromRoom,
   uploadFileToStorage,
+  deleteChatRoom,
   onValue
 } from './services/firebase';
 import { initKakao, kakaoLogin, kakaoLogout, getStoredUser, KakaoUser } from './services/kakao';
@@ -53,7 +54,8 @@ import {
   UserPlus,
   Crown,
   UserMinus,
-  Upload
+  Upload,
+  Trash2
 } from 'lucide-react';
 
 // 슈퍼관리자 이름 (고정)
@@ -512,6 +514,26 @@ const App: React.FC = () => {
     }
   };
 
+  // 채팅방 삭제 (슈퍼관리자만)
+  const handleDeleteRoom = async (roomId: string, roomName: string) => {
+    if (!isSuperAdmin) return;
+
+    const confirmed = confirm(`"${roomName}" 채팅방을 삭제하시겠습니까?\n모든 메시지가 삭제됩니다.`);
+    if (!confirmed) return;
+
+    try {
+      await clearRoomMessages(roomId);
+      await deleteChatRoom(roomId);
+      if (currentRoomId === roomId) {
+        setCurrentRoomId(null);
+      }
+      addNotification(`"${roomName}" 채팅방이 삭제되었습니다`, 'success');
+    } catch (error) {
+      console.error('채팅방 삭제 실패:', error);
+      addNotification('채팅방 삭제에 실패했습니다', 'error');
+    }
+  };
+
   // 현재 채팅방 이름 가져오기
   const getCurrentRoomName = () => {
     if (!currentRoomId) return '전체 채팅';
@@ -939,26 +961,36 @@ const App: React.FC = () => {
               .map(room => {
                 const isMember = userRoomIds.includes(room.id);
                 return (
-                  <button
-                    key={room.id}
-                    onClick={() => {
-                      setCurrentRoomId(room.id);
-                      setSelectedMessage(null);
-                      setIsSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold transition-all border-2 border-gray-900 ${
-                      currentRoomId === room.id
-                        ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
-                        : 'bg-white hover:bg-gray-100'
-                    }`}
-                    style={currentRoomId === room.id ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
-                  >
-                    <Hash className="w-5 h-5" />
-                    <span className="truncate">{room.name}</span>
-                    {isAdmin && !isMember && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 border border-gray-900 ml-auto" title="미참여 방">관리</span>
+                  <div key={room.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setCurrentRoomId(room.id);
+                        setSelectedMessage(null);
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`flex-1 flex items-center gap-3 px-3 py-2.5 text-sm font-bold transition-all border-2 border-gray-900 ${
+                        currentRoomId === room.id
+                          ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
+                          : 'bg-white hover:bg-gray-100'
+                      }`}
+                      style={currentRoomId === room.id ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
+                    >
+                      <Hash className="w-5 h-5" />
+                      <span className="truncate">{room.name}</span>
+                      {isAdmin && !isMember && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 border border-gray-900 ml-auto" title="미참여 방">관리</span>
+                      )}
+                    </button>
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => handleDeleteRoom(room.id, room.name)}
+                        className="p-2 bg-white hover:bg-[#FF6B6B] hover:text-white border-2 border-gray-900 transition-colors"
+                        title="채팅방 삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
-                  </button>
+                  </div>
                 );
               })}
           </div>
