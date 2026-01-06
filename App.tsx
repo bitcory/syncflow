@@ -5,7 +5,12 @@ import { NotificationToast } from './components/NotificationToast';
 import {
   sharedItemsRef,
   devicesRef,
+  chatRoomsRef,
   addSharedItem as firebaseAddItem,
+  addMessageToRoom,
+  createChatRoom,
+  clearRoomMessages,
+  getRoomMessagesRef,
   registerDevice,
   cleanupStaleDevices,
   clearAllSharedItems,
@@ -35,7 +40,9 @@ import {
   Search,
   Copy,
   Download,
-  Check
+  Check,
+  Plus,
+  Hash
 } from 'lucide-react';
 
 // 기기 ID 생성 (브라우저별 고유)
@@ -97,6 +104,10 @@ const App: React.FC = () => {
   const [replyInput, setReplyInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
+  const [chatRooms, setChatRooms] = useState<any[]>([]);
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const userListRef = useRef<HTMLDivElement>(null);
@@ -129,14 +140,41 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Firebase 연결 및 데이터 구독
+  // Firebase 연결 및 기기 목록 구독
   useEffect(() => {
     setIsConnecting(true);
 
     // 오래된 기기 정리
     cleanupStaleDevices();
 
-    // 공유 아이템 구독
+    // 연결된 기기 목록 구독
+    const unsubscribeDevices = onValue(devicesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const devices: DeviceProfile[] = Object.values(data);
+        setAvailableDevices(devices);
+      } else {
+        setAvailableDevices([]);
+      }
+      setIsConnecting(false);
+      setIsConnected(true);
+    }, (error) => {
+      console.error('Firebase 연결 오류:', error);
+      setIsConnecting(false);
+      setIsConnected(false);
+      addNotification('연결 실패', 'error');
+    });
+
+    // 정리
+    return () => {
+      unsubscribeDevices();
+    };
+  }, []);
+
+  // 기본 채팅방 (전체 채팅) 구독 - 채팅방 선택 안 됐을 때
+  useEffect(() => {
+    if (currentRoomId) return; // 채팅방 선택 시 기본 채팅 비활성화
+
     const unsubscribeItems = onValue(sharedItemsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -163,32 +201,10 @@ const App: React.FC = () => {
       } else {
         setSharedItems([]);
       }
-      setIsConnecting(false);
-      setIsConnected(true);
-    }, (error) => {
-      console.error('Firebase 연결 오류:', error);
-      setIsConnecting(false);
-      setIsConnected(false);
-      addNotification('연결 실패', 'error');
     });
 
-    // 연결된 기기 목록 구독
-    const unsubscribeDevices = onValue(devicesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const devices: DeviceProfile[] = Object.values(data);
-        setAvailableDevices(devices);
-      } else {
-        setAvailableDevices([]);
-      }
-    });
-
-    // 정리
-    return () => {
-      unsubscribeItems();
-      unsubscribeDevices();
-    };
-  }, []);
+    return () => unsubscribeItems();
+  }, [currentRoomId]);
 
   // 카카오 로그인 시 사용자 등록
   useEffect(() => {
@@ -219,6 +235,57 @@ const App: React.FC = () => {
       setSelectedMessage(null);
     }
   }, [sharedItems, selectedMessage]);
+
+  // 채팅방 목록 구독
+  useEffect(() => {
+    const unsubscribe = onValue(chatRoomsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const rooms = Object.entries(data)
+          .map(([key, value]: [string, any]) => ({
+            id: key,
+            ...value,
+            createdAt: value.createdAt || Date.now()
+          }))
+          .sort((a, b) => b.createdAt - a.createdAt);
+        setChatRooms(rooms);
+      } else {
+        setChatRooms([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 채팅방별 메시지 구독
+  useEffect(() => {
+    if (!currentRoomId) return;
+
+    const messagesRef = getRoomMessagesRef(currentRoomId);
+    const unsubscribe = onValue(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const items: SharedItem[] = Object.entries(data)
+          .map(([key, value]: [string, any]) => ({
+            id: key,
+            type: value.type,
+            content: value.content,
+            fileName: value.fileName,
+            sender: value.sender,
+            senderImage: value.senderImage,
+            senderId: value.senderId,
+            timestamp: value.timestamp || value.createdAt,
+            isProcessing: false
+          }))
+          .sort((a, b) => a.timestamp - b.timestamp);
+        setSharedItems(items);
+      } else {
+        setSharedItems([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentRoomId]);
 
   // 선택된 메시지의 댓글 구독
   useEffect(() => {
@@ -263,10 +330,15 @@ const App: React.FC = () => {
   };
 
   const handleClearAll = async () => {
-    const password = prompt('비밀번호를 입력하세요:');
+    const roomName = getCurrentRoomName();
+    const password = prompt(`"${roomName}" 채팅방의 모든 내용을 삭제합니다.\n비밀번호를 입력하세요:`);
     if (password === '1004') {
       try {
-        await clearAllSharedItems();
+        if (currentRoomId) {
+          await clearRoomMessages(currentRoomId);
+        } else {
+          await clearAllSharedItems();
+        }
         addNotification('모든 내용이 삭제되었습니다', 'success');
       } catch (err) {
         addNotification('삭제 실패', 'error');
@@ -339,6 +411,34 @@ const App: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  // 채팅방 생성
+  const handleCreateRoom = async () => {
+    if (!newRoomName.trim() || !kakaoUser) return;
+
+    try {
+      const roomRef = await createChatRoom({
+        name: newRoomName.trim(),
+        createdBy: String(kakaoUser.id),
+        creatorName: kakaoUser.nickname,
+        creatorImage: kakaoUser.profileImage
+      });
+      setNewRoomName('');
+      setIsCreatingRoom(false);
+      setCurrentRoomId(roomRef.key);
+      addNotification(`"${newRoomName.trim()}" 채팅방이 생성되었습니다`, 'success');
+    } catch (error) {
+      console.error('채팅방 생성 실패:', error);
+      addNotification('채팅방 생성에 실패했습니다', 'error');
+    }
+  };
+
+  // 현재 채팅방 이름 가져오기
+  const getCurrentRoomName = () => {
+    if (!currentRoomId) return '전체 채팅';
+    const room = chatRooms.find(r => r.id === currentRoomId);
+    return room?.name || '채팅방';
+  };
+
   const handleKakaoLogin = async () => {
     try {
       const user = await kakaoLogin();
@@ -374,7 +474,11 @@ const App: React.FC = () => {
     };
 
     try {
-      await firebaseAddItem(newItem);
+      if (currentRoomId) {
+        await addMessageToRoom(currentRoomId, newItem);
+      } else {
+        await firebaseAddItem(newItem);
+      }
       setTextInput('');
     } catch (error) {
       console.error('전송 실패:', error);
@@ -414,7 +518,11 @@ const App: React.FC = () => {
       };
 
       try {
-        await firebaseAddItem(newItem);
+        if (currentRoomId) {
+          await addMessageToRoom(currentRoomId, newItem);
+        } else {
+          await firebaseAddItem(newItem);
+        }
       } catch (error) {
         console.error('전송 실패:', error);
         addNotification('전송 실패', 'error');
@@ -486,6 +594,61 @@ const App: React.FC = () => {
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Chat Rooms List */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-bold text-gray-900">채팅방</span>
+            <button
+              onClick={() => setIsCreatingRoom(true)}
+              className="p-1.5 bg-white hover:bg-[#4ECDC4] border-2 border-gray-900 transition-colors"
+              title="새 채팅방"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {/* 전체 채팅 */}
+            <button
+              onClick={() => {
+                setCurrentRoomId(null);
+                setSelectedMessage(null);
+                setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold transition-all border-2 border-gray-900 ${
+                !currentRoomId
+                  ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
+                  : 'bg-white hover:bg-gray-100'
+              }`}
+              style={!currentRoomId ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span>전체 채팅</span>
+            </button>
+
+            {/* 생성된 채팅방들 */}
+            {chatRooms.map(room => (
+              <button
+                key={room.id}
+                onClick={() => {
+                  setCurrentRoomId(room.id);
+                  setSelectedMessage(null);
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold transition-all border-2 border-gray-900 ${
+                  currentRoomId === room.id
+                    ? 'bg-[#4ECDC4] shadow-[3px_3px_0px_#1a1a2e]'
+                    : 'bg-white hover:bg-gray-100'
+                }`}
+                style={currentRoomId === room.id ? {boxShadow: '3px 3px 0px #1a1a2e'} : {}}
+              >
+                <Hash className="w-5 h-5" />
+                <span className="truncate">{room.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* User List - Compact with Dropdown */}
@@ -560,16 +723,11 @@ const App: React.FC = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            {kakaoUser && (
-              <span className="hidden sm:flex text-gray-900 font-bold text-sm items-center gap-2 bg-white px-3 py-1 border-2 border-gray-900">
-                {kakaoUser.profileImage ? (
-                  <img src={kakaoUser.profileImage} alt="" className="w-5 h-5 rounded-full" />
-                ) : (
-                  <User className="w-4 h-4" />
-                )}
-                <span>{kakaoUser.nickname}</span>
-              </span>
-            )}
+            {/* 현재 채팅방 이름 */}
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 border-2 border-gray-900">
+              {currentRoomId ? <Hash className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />}
+              <span className="font-bold text-sm">{getCurrentRoomName()}</span>
+            </div>
           </div>
 
           {/* Search Input */}
@@ -919,6 +1077,66 @@ const App: React.FC = () => {
             </div>
           </div>
         </aside>
+      )}
+
+      {/* Room Creation Modal */}
+      {isCreatingRoom && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-50"
+            onClick={() => setIsCreatingRoom(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white border-4 border-gray-900 shadow-[8px_8px_0px_#1a1a2e] w-full max-w-md" style={{boxShadow: '8px 8px 0px #1a1a2e'}}>
+              <div className="p-4 border-b-3 border-gray-900 bg-[#FFE66D] flex items-center justify-between" style={{borderBottom: '3px solid #1a1a2e'}}>
+                <h3 className="font-bold text-gray-900 text-lg">새 채팅방 만들기</h3>
+                <button
+                  onClick={() => setIsCreatingRoom(false)}
+                  className="p-1.5 hover:bg-white/50 rounded transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <label className="block text-sm font-bold text-gray-900 mb-2">
+                  채팅방 이름
+                </label>
+                <input
+                  type="text"
+                  value={newRoomName}
+                  onChange={(e) => setNewRoomName(e.target.value)}
+                  placeholder="채팅방 이름을 입력하세요"
+                  className="w-full px-4 py-3 border-3 border-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-[#4ECDC4]"
+                  style={{border: '3px solid #1a1a2e', fontSize: '16px'}}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      handleCreateRoom();
+                    }
+                  }}
+                />
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setIsCreatingRoom(false)}
+                    className="flex-1 px-4 py-3 bg-white border-3 border-gray-900 font-bold hover:bg-gray-100 transition-colors"
+                    style={{border: '3px solid #1a1a2e'}}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleCreateRoom}
+                    disabled={!newRoomName.trim()}
+                    className="flex-1 px-4 py-3 bg-[#4ECDC4] border-3 border-gray-900 font-bold hover:bg-[#3dbdb5] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-[4px_4px_0px_#1a1a2e]"
+                    style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e'}}
+                  >
+                    만들기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

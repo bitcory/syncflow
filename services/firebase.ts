@@ -15,13 +15,38 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-// 공유 아이템 레퍼런스
-export const sharedItemsRef = ref(database, 'sharedItems');
+// 채팅방 레퍼런스
+export const chatRoomsRef = ref(database, 'chatRooms');
 
 // 연결된 기기 레퍼런스
 export const devicesRef = ref(database, 'devices');
 
-// 새 아이템 추가
+// 기존 공유 아이템 레퍼런스 (기본 채팅방용 - 호환성)
+export const sharedItemsRef = ref(database, 'sharedItems');
+
+// 채팅방별 메시지 레퍼런스
+export const getRoomMessagesRef = (roomId: string) => {
+  return ref(database, `messages/${roomId}`);
+};
+
+// 채팅방 생성
+export const createChatRoom = (roomData: { name: string; createdBy: string; creatorName: string; creatorImage?: string }) => {
+  return push(chatRoomsRef, {
+    ...roomData,
+    createdAt: serverTimestamp()
+  });
+};
+
+// 채팅방에 메시지 추가
+export const addMessageToRoom = (roomId: string, message: any) => {
+  const messagesRef = getRoomMessagesRef(roomId);
+  return push(messagesRef, {
+    ...message,
+    createdAt: serverTimestamp()
+  });
+};
+
+// 새 아이템 추가 (기본 채팅방용 - 호환성)
 export const addSharedItem = (item: any) => {
   return push(sharedItemsRef, {
     ...item,
@@ -79,15 +104,27 @@ export const cleanupStaleDevices = async () => {
   }
 };
 
-// 모든 공유 아이템 삭제
+// 모든 공유 아이템 삭제 (기본 채팅방)
 export const clearAllSharedItems = () => {
   return remove(sharedItemsRef);
 };
 
-// 특정 아이템 삭제
+// 채팅방 메시지 전체 삭제
+export const clearRoomMessages = (roomId: string) => {
+  const messagesRef = getRoomMessagesRef(roomId);
+  return remove(messagesRef);
+};
+
+// 특정 아이템 삭제 (기본 채팅방)
 export const deleteSharedItem = (itemId: string) => {
   const itemRef = ref(database, `sharedItems/${itemId}`);
   return remove(itemRef);
+};
+
+// 채팅방 메시지 삭제
+export const deleteRoomMessage = (roomId: string, messageId: string) => {
+  const messageRef = ref(database, `messages/${roomId}/${messageId}`);
+  return remove(messageRef);
 };
 
 // 댓글 추가
@@ -102,6 +139,12 @@ export const addReply = (itemId: string, reply: any) => {
 // 댓글 레퍼런스 가져오기
 export const getRepliesRef = (itemId: string) => {
   return ref(database, `replies/${itemId}`);
+};
+
+// 채팅방 삭제
+export const deleteChatRoom = (roomId: string) => {
+  const roomRef = ref(database, `chatRooms/${roomId}`);
+  return remove(roomRef);
 };
 
 export { database, ref, onValue };
