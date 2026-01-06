@@ -79,4 +79,9 @@ export const cleanupStaleDevices = async () => {
   }
 };
 
+// 모든 공유 아이템 삭제
+export const clearAllSharedItems = () => {
+  return remove(sharedItemsRef);
+};
+
 export { database, ref, onValue };

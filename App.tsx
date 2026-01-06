@@ -8,6 +8,7 @@ import {
   addSharedItem as firebaseAddItem,
   registerDevice,
   cleanupStaleDevices,
+  clearAllSharedItems,
   onValue
 } from './services/firebase';
 import {
@@ -16,7 +17,6 @@ import {
   Image as ImageIcon,
   FileText,
   Film,
-  Settings,
   Smartphone,
   Monitor,
   Share2,
@@ -161,6 +161,20 @@ const App: React.FC = () => {
 
   const removeNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleClearAll = async () => {
+    const password = prompt('비밀번호를 입력하세요:');
+    if (password === '1004') {
+      try {
+        await clearAllSharedItems();
+        addNotification('모든 내용이 삭제되었습니다', 'success');
+      } catch (err) {
+        addNotification('삭제 실패', 'error');
+      }
+    } else if (password !== null) {
+      addNotification('비밀번호가 틀렸습니다', 'error');
+    }
   };
 
   const handleSendText = async () => {
@@ -342,8 +356,12 @@ const App: React.FC = () => {
               <span className="sm:hidden">{currentDevice.name.split(' ')[0]}</span>
             </span>
           </div>
-          <button className="p-2 text-gray-900 hover:bg-[#FF6B6B] hover:text-white transition-colors border-2 border-gray-900 bg-white">
-            <Settings className="w-5 h-5" />
+          <button
+            onClick={handleClearAll}
+            className="p-2 text-gray-900 hover:bg-[#FF6B6B] hover:text-white transition-colors border-2 border-gray-900 bg-white"
+            title="전체 삭제"
+          >
+            <RefreshCw className="w-5 h-5" />
           </button>
         </header>
 
@@ -405,13 +423,6 @@ const App: React.FC = () => {
                 <Film className="w-4 h-4" /> 동영상
               </button>
               </div>
-              <button
-                onClick={() => window.location.reload()}
-                className="p-2 bg-white hover:bg-[#4ECDC4] text-gray-900 border-2 border-gray-900 transition-all"
-                title="새로고침"
-              >
-                <RefreshCw className="w-5 h-5" />
-              </button>
             </div>
 
             <div className="relative">
