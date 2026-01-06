@@ -546,7 +546,8 @@ const App: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="메시지 검색..."
-                className="w-full pl-10 pr-4 py-2 text-sm border-2 border-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#FFE66D]"
+                className="w-full pl-10 pr-4 py-2 text-base border-2 border-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#FFE66D]"
+                style={{ fontSize: '16px' }}
               />
               {searchQuery && (
                 <button
@@ -685,8 +686,8 @@ const App: React.FC = () => {
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                     placeholder="공유할 텍스트를 입력하세요..."
-                    className="w-full bg-white text-gray-900 placeholder-gray-500 p-4 pr-14 outline-none border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] transition-all resize-none h-24 font-medium focus:shadow-[6px_6px_0px_#1a1a2e]"
-                    style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e'}}
+                    className="w-full bg-white text-gray-900 placeholder-gray-500 p-4 pr-14 outline-none border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] transition-all resize-none h-24 font-medium focus:shadow-[6px_6px_0px_#1a1a2e] text-base"
+                    style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e', fontSize: '16px'}}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                         e.preventDefault();
@@ -835,7 +836,8 @@ const App: React.FC = () => {
                 value={replyInput}
                 onChange={(e) => setReplyInput(e.target.value)}
                 placeholder="댓글을 입력하세요..."
-                className="flex-1 px-4 py-2 border-2 border-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4ECDC4]"
+                className="flex-1 px-4 py-2 border-2 border-gray-900 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#4ECDC4]"
+                style={{ fontSize: '16px' }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                     e.preventDefault();
