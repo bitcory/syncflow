@@ -90,4 +90,18 @@ export const deleteSharedItem = (itemId: string) => {
   return remove(itemRef);
 };
 
+// 댓글 추가
+export const addReply = (itemId: string, reply: any) => {
+  const repliesRef = ref(database, `replies/${itemId}`);
+  return push(repliesRef, {
+    ...reply,
+    createdAt: serverTimestamp()
+  });
+};
+
+// 댓글 레퍼런스 가져오기
+export const getRepliesRef = (itemId: string) => {
+  return ref(database, `replies/${itemId}`);
+};
+
 export { database, ref, onValue };

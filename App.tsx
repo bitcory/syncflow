@@ -10,6 +10,8 @@ import {
   cleanupStaleDevices,
   clearAllSharedItems,
   deleteSharedItem,
+  addReply,
+  getRepliesRef,
   onValue
 } from './services/firebase';
 import { initKakao, kakaoLogin, kakaoLogout, getStoredUser, KakaoUser } from './services/kakao';
@@ -19,27 +21,17 @@ import {
   Image as ImageIcon,
   FileText,
   Film,
-  Smartphone,
-  Monitor,
-  Share2,
   Loader2,
-  Laptop,
   Menu,
   X,
   Zap,
   MessageCircle,
   RefreshCw,
-  LogIn,
   LogOut,
   User,
   ChevronDown,
   ChevronUp,
-  Users,
-  Copy,
-  Trash2,
-  Download,
-  Clock,
-  Check
+  Users
 } from 'lucide-react';
 
 // 기기 ID 생성 (브라우저별 고유)
@@ -97,8 +89,10 @@ const App: React.FC = () => {
   const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoUser | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<SharedItem | null>(null);
-  const [copiedInPanel, setCopiedInPanel] = useState(false);
+  const [replies, setReplies] = useState<any[]>([]);
+  const [replyInput, setReplyInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
   const userListRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const processedIds = useRef<Set<string>>(new Set());
@@ -220,6 +214,39 @@ const App: React.FC = () => {
     }
   }, [sharedItems, selectedMessage]);
 
+  // 선택된 메시지의 댓글 구독
+  useEffect(() => {
+    if (!selectedMessage) {
+      setReplies([]);
+      return;
+    }
+
+    const repliesRef = getRepliesRef(selectedMessage.id);
+    const unsubscribe = onValue(repliesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const replyList = Object.entries(data)
+          .map(([key, value]: [string, any]) => ({
+            id: key,
+            ...value,
+            timestamp: value.timestamp || value.createdAt
+          }))
+          .sort((a, b) => a.timestamp - b.timestamp);
+        setReplies(replyList);
+        // 새 댓글 시 스크롤
+        setTimeout(() => {
+          if (threadRef.current) {
+            threadRef.current.scrollTop = threadRef.current.scrollHeight;
+          }
+        }, 100);
+      } else {
+        setReplies([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedMessage]);
+
   const addNotification = (message: string, type: 'success' | 'info' | 'error') => {
     const id = Date.now().toString() + Math.random();
     setNotifications(prev => [...prev, { id, message, type }]);
@@ -243,50 +270,25 @@ const App: React.FC = () => {
     }
   };
 
-  // 패널에서 메시지 복사
-  const handlePanelCopy = async () => {
-    if (!selectedMessage) return;
+  // 댓글 전송
+  const handleSendReply = async () => {
+    if (!replyInput.trim() || !selectedMessage) return;
+
+    const newReply = {
+      content: replyInput,
+      sender: kakaoUser?.nickname || currentDevice.name,
+      senderImage: kakaoUser?.profileImage || null,
+      senderId: kakaoUser?.id || null,
+      timestamp: Date.now()
+    };
+
     try {
-      const textarea = document.createElement('textarea');
-      textarea.innerHTML = selectedMessage.content;
-      const decodedText = textarea.value;
-      await navigator.clipboard.writeText(decodedText);
-      setCopiedInPanel(true);
-      setTimeout(() => setCopiedInPanel(false), 2000);
-    } catch (err) {
-      addNotification('복사 실패', 'error');
+      await addReply(selectedMessage.id, newReply);
+      setReplyInput('');
+    } catch (error) {
+      console.error('댓글 전송 실패:', error);
+      addNotification('댓글 전송 실패', 'error');
     }
-  };
-
-  // 패널에서 메시지 삭제
-  const handlePanelDelete = async () => {
-    if (!selectedMessage) return;
-    const confirm = window.confirm('이 메시지를 삭제하시겠습니까?');
-    if (confirm) {
-      try {
-        await deleteSharedItem(selectedMessage.id);
-        setSelectedMessage(null);
-        addNotification('메시지가 삭제되었습니다', 'success');
-      } catch (err) {
-        addNotification('삭제 실패', 'error');
-      }
-    }
-  };
-
-  // 패널에서 미디어 다운로드
-  const handlePanelDownload = () => {
-    if (!selectedMessage) return;
-    const link = document.createElement('a');
-    link.href = selectedMessage.content;
-    if (selectedMessage.fileName) {
-      link.download = selectedMessage.fileName;
-    } else {
-      const ext = selectedMessage.type === ContentType.IMAGE ? 'png' : 'mp4';
-      link.download = `tbchat_${selectedMessage.id}.${ext}`;
-    }
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   // 시간 포맷
@@ -670,12 +672,12 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Right Panel - Message Detail */}
+      {/* Right Panel - Thread/Replies */}
       {selectedMessage && (
-        <aside className="hidden md:flex w-80 bg-white border-l-4 border-gray-900 flex-col h-screen shrink-0">
-          {/* Panel Header */}
+        <aside className="hidden md:flex w-96 bg-white border-l-4 border-gray-900 flex-col h-screen shrink-0">
+          {/* Thread Header */}
           <div className="p-4 border-b-3 border-gray-900 flex items-center justify-between bg-[#4ECDC4]" style={{borderBottom: '3px solid #1a1a2e'}}>
-            <h3 className="font-bold text-gray-900">메시지 상세</h3>
+            <h3 className="font-bold text-gray-900">스레드</h3>
             <button
               onClick={() => setSelectedMessage(null)}
               className="p-1.5 hover:bg-white/50 rounded transition-colors"
@@ -684,66 +686,103 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          {/* Sender Info */}
-          <div className="p-4 border-b-2 border-gray-200">
-            <div className="flex items-center gap-3">
-              {selectedMessage.senderImage ? (
-                <img src={selectedMessage.senderImage} alt="" className="w-12 h-12 rounded-full border-2 border-gray-900" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-[#FFE66D] border-2 border-gray-900 flex items-center justify-center">
-                  <span className="text-lg font-bold">{selectedMessage.sender.charAt(0)}</span>
-                </div>
-              )}
-              <div>
-                <div className="font-bold text-gray-900">{selectedMessage.sender}</div>
-                <div className="text-xs text-gray-500 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {formatDateTime(selectedMessage.timestamp)}
+          {/* Thread Content */}
+          <div ref={threadRef} className="flex-1 overflow-y-auto">
+            {/* Original Message */}
+            <div className="p-4 border-b-2 border-gray-200 bg-gray-50">
+              <div className="flex items-start gap-3">
+                {selectedMessage.senderImage ? (
+                  <img src={selectedMessage.senderImage} alt="" className="w-10 h-10 rounded-full border-2 border-gray-900 flex-shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-[#FFE66D] border-2 border-gray-900 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-bold">{selectedMessage.sender.charAt(0)}</span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-900 text-sm">{selectedMessage.sender}</span>
+                    <span className="text-xs text-gray-500">{formatDateTime(selectedMessage.timestamp)}</span>
+                  </div>
+                  {selectedMessage.type === ContentType.TEXT ? (
+                    <p className="text-sm text-gray-900 mt-1 whitespace-pre-wrap break-words">{selectedMessage.content}</p>
+                  ) : selectedMessage.type === ContentType.IMAGE ? (
+                    <img src={selectedMessage.content} alt="Shared" className="mt-2 max-w-full max-h-48 rounded-lg border-2 border-gray-900" />
+                  ) : (
+                    <video src={selectedMessage.content} controls className="mt-2 max-w-full max-h-48 rounded-lg border-2 border-gray-900" />
+                  )}
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Content Preview */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">내용</label>
-            {selectedMessage.type === ContentType.TEXT ? (
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-3">
-                <p className="text-sm text-gray-900 whitespace-pre-wrap break-words">{selectedMessage.content}</p>
+            {/* Reply Count */}
+            {replies.length > 0 && (
+              <div className="px-4 py-2 text-xs font-bold text-gray-500 border-b border-gray-200">
+                {replies.length}개의 댓글
               </div>
-            ) : selectedMessage.type === ContentType.IMAGE ? (
-              <img src={selectedMessage.content} alt="Preview" className="w-full rounded-lg border-2 border-gray-900" />
-            ) : (
-              <video src={selectedMessage.content} controls className="w-full rounded-lg border-2 border-gray-900" />
             )}
+
+            {/* Replies */}
+            <div className="p-4 space-y-4">
+              {replies.map((reply) => {
+                const isMyReply = kakaoUser && (reply.senderId === kakaoUser.id || String(reply.senderId) === String(kakaoUser.id));
+                return (
+                  <div key={reply.id} className={`flex items-start gap-3 ${isMyReply ? 'flex-row-reverse' : ''}`}>
+                    {reply.senderImage ? (
+                      <img src={reply.senderImage} alt="" className="w-8 h-8 rounded-full border-2 border-gray-900 flex-shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[#4ECDC4] border-2 border-gray-900 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold">{reply.sender?.charAt(0) || '?'}</span>
+                      </div>
+                    )}
+                    <div className={`flex-1 min-w-0 ${isMyReply ? 'text-right' : ''}`}>
+                      <div className={`flex items-center gap-2 ${isMyReply ? 'justify-end' : ''}`}>
+                        <span className="font-bold text-gray-900 text-xs">{reply.sender}</span>
+                        <span className="text-[10px] text-gray-500">
+                          {new Date(reply.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className={`mt-1 inline-block px-3 py-2 rounded-2xl text-sm ${isMyReply ? 'bg-[#FFE66D] rounded-tr-none' : 'bg-white border-2 border-gray-900 rounded-tl-none'}`}
+                           style={!isMyReply ? {boxShadow: '2px 2px 0px #1a1a2e'} : {}}>
+                        <p className="text-gray-900 whitespace-pre-wrap break-words">{reply.content}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {replies.length === 0 && (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  <MessageCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  아직 댓글이 없습니다
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Actions */}
-          <div className="p-4 border-t-3 border-gray-900 space-y-2" style={{borderTop: '3px solid #1a1a2e'}}>
-            {selectedMessage.type === ContentType.TEXT ? (
+          {/* Reply Input */}
+          <div className="p-4 border-t-3 border-gray-900 bg-gray-50" style={{borderTop: '3px solid #1a1a2e'}}>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={replyInput}
+                onChange={(e) => setReplyInput(e.target.value)}
+                placeholder="댓글을 입력하세요..."
+                className="flex-1 px-4 py-2 border-2 border-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4ECDC4]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    handleSendReply();
+                  }
+                }}
+              />
               <button
-                onClick={handlePanelCopy}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-all border-2 border-gray-900 ${copiedInPanel ? 'bg-[#4ECDC4]' : 'bg-white hover:bg-[#FFE66D]'}`}
+                onClick={handleSendReply}
+                disabled={!replyInput.trim()}
+                className="px-4 py-2 bg-[#4ECDC4] hover:bg-[#3dbdb5] disabled:bg-gray-300 text-gray-900 font-bold border-2 border-gray-900 rounded-lg transition-colors"
               >
-                {copiedInPanel ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copiedInPanel ? '복사됨!' : '메시지 복사'}
+                <Send className="w-4 h-4" />
               </button>
-            ) : (
-              <button
-                onClick={handlePanelDownload}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-all border-2 border-gray-900 bg-white hover:bg-[#FFE66D]"
-              >
-                <Download className="w-4 h-4" />
-                다운로드
-              </button>
-            )}
-            <button
-              onClick={handlePanelDelete}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-all border-2 border-gray-900 bg-white hover:bg-[#FF6B6B] hover:text-white"
-            >
-              <Trash2 className="w-4 h-4" />
-              메시지 삭제
-            </button>
+            </div>
           </div>
         </aside>
       )}
