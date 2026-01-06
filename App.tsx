@@ -546,7 +546,7 @@ const App: React.FC = () => {
                     className="w-full bg-white text-gray-900 placeholder-gray-500 p-4 pr-14 outline-none border-3 border-gray-900 shadow-[4px_4px_0px_#1a1a2e] transition-all resize-none h-24 font-medium focus:shadow-[6px_6px_0px_#1a1a2e]"
                     style={{border: '3px solid #1a1a2e', boxShadow: '4px 4px 0px #1a1a2e'}}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                         e.preventDefault();
                         handleSendText();
                       }
