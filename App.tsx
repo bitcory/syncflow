@@ -255,7 +255,7 @@ const App: React.FC = () => {
               <Share2 className="text-white w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">SyncFlow</h1>
+              <h1 className="text-xl font-bold text-white tracking-tight">TB CHAT</h1>
               <p className="text-xs text-slate-500">실시간 크로스 디바이스 공유</p>
             </div>
           </div>
