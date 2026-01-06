@@ -1229,7 +1229,7 @@ const App: React.FC = () => {
         </header>
 
         {/* Feed Area */}
-        <div ref={feedRef} className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 flex flex-col justify-end">
+        <div ref={feedRef} className="flex-1 overflow-y-auto p-4 pb-48 md:pb-6 flex flex-col">
           {(() => {
             const filteredItems = searchQuery.trim()
               ? sharedItems.filter(item =>
@@ -1265,25 +1265,29 @@ const App: React.FC = () => {
             }
 
             return (
-              <div className="space-y-4">
-                {searchQuery && (
-                  <div className="text-center py-2">
-                    <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1 border-2 border-gray-300 rounded-full">
-                      {filteredItems.length}개의 검색 결과
-                    </span>
-                  </div>
-                )}
-                {filteredItems.map(item => (
-                  <FeedItemCard
-                    key={item.id}
-                    item={item}
-                    currentUserId={kakaoUser?.id}
-                    currentUserName={kakaoUser?.nickname}
-                    onSelect={() => setSelectedMessage(item)}
-                    isSelected={selectedMessage?.id === item.id}
-                  />
-                ))}
-              </div>
+              <>
+                {/* 메시지가 적을 때 아래쪽 정렬을 위한 spacer */}
+                <div className="flex-grow" />
+                <div className="space-y-4">
+                  {searchQuery && (
+                    <div className="text-center py-2">
+                      <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1 border-2 border-gray-300 rounded-full">
+                        {filteredItems.length}개의 검색 결과
+                      </span>
+                    </div>
+                  )}
+                  {filteredItems.map(item => (
+                    <FeedItemCard
+                      key={item.id}
+                      item={item}
+                      currentUserId={kakaoUser?.id}
+                      currentUserName={kakaoUser?.nickname}
+                      onSelect={() => setSelectedMessage(item)}
+                      isSelected={selectedMessage?.id === item.id}
+                    />
+                  ))}
+                </div>
+              </>
             );
           })()}
         </div>
