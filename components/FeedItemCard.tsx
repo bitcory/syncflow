@@ -5,16 +5,20 @@ import { Download, Copy, Check, ChevronDown } from 'lucide-react';
 interface Props {
   item: SharedItem;
   currentUserId?: number;
+  currentUserName?: string;
 }
 
 const MAX_LENGTH = 200; // 최대 표시 글자 수
 
-export const FeedItemCard: React.FC<Props> = ({ item, currentUserId }) => {
+export const FeedItemCard: React.FC<Props> = ({ item, currentUserId, currentUserName }) => {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  // 내 메시지인지 확인
-  const isMine = currentUserId && item.senderId === currentUserId;
+  // 내 메시지인지 확인 (senderId 비교 또는 이름 비교)
+  const isMine = (
+    (currentUserId && (item.senderId === currentUserId || Number(item.senderId) === currentUserId)) ||
+    (currentUserName && item.sender === currentUserName)
+  );
 
   // 긴 텍스트인지 확인
   const isLongText = item.type === ContentType.TEXT && item.content.length > MAX_LENGTH;

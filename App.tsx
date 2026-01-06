@@ -476,7 +476,7 @@ const App: React.FC = () => {
             </div>
           ) : (
             sharedItems.map(item => (
-              <FeedItemCard key={item.id} item={item} currentUserId={kakaoUser?.id} />
+              <FeedItemCard key={item.id} item={item} currentUserId={kakaoUser?.id} currentUserName={kakaoUser?.nickname} />
             ))
           )}
         </div>
