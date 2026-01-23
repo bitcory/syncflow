@@ -1022,17 +1022,17 @@ const App: React.FC = () => {
         {/* User List - Compact with Dropdown */}
         <div className="mb-6" ref={userListRef}>
           {(() => {
-            // 현재 방에 따라 접속 사용자 필터링
+            // 현재 방에 따라 접속 사용자 필터링 (관리자는 항상 전체 사용자 표시)
             const currentRoomMembers = currentRoomId ? roomMembers[currentRoomId] || {} : {};
-            const filteredUsers = currentRoomId
-              ? availableDevices.filter(user => {
-                  // 관리자는 항상 표시
-                  const userIsAdmin = user.name === SUPER_ADMIN_NAME || adminList.includes(user.id);
-                  if (userIsAdmin) return true;
-                  // 해당 방의 멤버만 표시
-                  return currentRoomMembers[user.id];
-                })
-              : availableDevices; // 전체 채팅은 모든 사용자 표시
+            const filteredUsers = isAdmin
+              ? availableDevices // 관리자는 모든 접속 사용자 표시 (사용자 추가 가능하도록)
+              : currentRoomId
+                ? availableDevices.filter(user => {
+                    const userIsAdmin = user.name === SUPER_ADMIN_NAME || adminList.includes(user.id);
+                    if (userIsAdmin) return true;
+                    return currentRoomMembers[user.id];
+                  })
+                : availableDevices;
 
             return (
               <>
